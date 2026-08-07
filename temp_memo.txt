@@ -1,5 +1,20 @@
-`설정` -> `자동 가져오기 실행`  는 아래와 같이 실행되도록 제안해줘
- - 카메라 미연결되고 app 실행되어 있는 경우에,  카메라 인식되면 ** `사진 및 비디오 가져오기` 에서  `가져오기` 페이지로 이동하고 ((복사)까지 실행** -> 정상완료되면 삭제여부 확인
- - 카메라 연결되어 있는 상태에서 app 실행되는 경우에 -> 메인 화면에서 사용자 입력 대기
-`자동 가져오기 실행` 기본 설정은 FALSE 이다.
-. `설정` -> 변경된 값이 있고 `설정 저장` 버튼을 누르면 app을 다시 실행해서 변경된 설정이 적용되도록 한다.
+▷ 설치 방법
+
+[Step 1] 좌측 아래 Windows 로고 클릭 -> Windows PowerShell 실행
+[Step 2] 아래 한줄을 copy 해서 powershell 에 paste 하고 enter -> zip 파일 다운로드
+
+Invoke-WebRequest -Uri "https://github.com/west6238/dslr-filetransfer/releases/download/v1.0.0/DSLR_FileTransfer_v1.0.0.zip" -OutFile "DSLR_FileTransfer.zip"
+
+[Step 3] "DSLR_FileTransfer.zip" 을 원하는 폴더 아래로 이동하고, 압축 풀기
+   
+[Step 4] 압축 푼 폴더에서 `DSLR_FileTransfer.exe` 더블클릭
+
+
+▷ 기타
+   . 작업 PC 와 Nikon camera 를 USB-HUB 거쳐서 테스트.
+   . Nikon camera 기기 인식되는데, `파일 복사 - 이동` 이 되지 않아서 원인 찾는데 오래 걸렸네요
+   . 결론 : (최소 제 PC 환경에서는) USB-HUB 없이 (PC - Camera) 직접 연결된 경우에만 `파일 복사 - 이동`이 실행됨.
+
+
+
+

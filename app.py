@@ -18,7 +18,11 @@ import subprocess
 import webbrowser
 import threading
 from flask import Flask, render_template, jsonify, request
+import requests
 from camera_handler import camera_handler
+
+CURRENT_VERSION = "v1.0.0"
+download_progress = {"percent": 0, "status": "idle", "error": None}
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -113,6 +117,163 @@ def register_autorun():
 def unregister_autorun():
     success = camera_handler.run_autorun_setup("uninstall")
     return jsonify({"success": success})
+
+@app.route('/api/check-update', methods=['GET'])
+def check_update():
+    try:
+        url = "https://api.github.com/repos/west6238/dslr-filetransfer/releases/latest"
+        resp = requests.get(url, timeout=5)
+        
+        if resp.status_code == 404:
+            # 릴리즈가 아직 등록되지 않은 경우
+            return jsonify({
+                "has_update": False,
+                "current_version": CURRENT_VERSION
+            })
+            
+        resp.raise_for_status()
+        data = resp.json()
+        latest_version = data.get("tag_name", "")
+        # Remove 'v' prefix if present for simple string comparison, though string comparison works fine for v1.0.0 vs v1.0.1
+        has_update = latest_version and latest_version != CURRENT_VERSION
+        return jsonify({
+            "has_update": has_update,
+            "latest_version": latest_version,
+            "current_version": CURRENT_VERSION,
+            "release_notes": data.get("body", ""),
+            "assets": data.get("assets", [])
+        })
+    except Exception as e:
+        print(f"[업데이트] 버전 확인 실패: {e}")
+        return jsonify({"has_update": False, "error": str(e)})
+
+@app.route('/api/download-update', methods=['POST'])
+def download_update():
+    global download_progress
+    data = request.get_json(silent=True) or {}
+    download_url = data.get("url")
+    if not download_url:
+        return jsonify({"success": False, "error": "다운로드 URL이 없습니다."})
+
+    download_progress = {"percent": 0, "status": "downloading", "error": None}
+
+    def do_download():
+        global download_progress
+        try:
+            exe_dir = os.path.dirname(sys.executable)
+            parent_dir = os.path.dirname(exe_dir)
+            temp_zip_path = os.path.join(parent_dir, "update_temp.zip")
+            
+            resp = requests.get(download_url, stream=True, timeout=10)
+            resp.raise_for_status()
+            total_size = int(resp.headers.get('content-length', 0))
+            downloaded = 0
+            with open(temp_zip_path, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            download_progress["percent"] = int((downloaded / total_size) * 100)
+            download_progress["status"] = "completed"
+            download_progress["percent"] = 100
+        except Exception as e:
+            print(f"[업데이트] 다운로드 실패: {e}")
+            download_progress["status"] = "error"
+            download_progress["error"] = str(e)
+
+    threading.Thread(target=do_download, daemon=True).start()
+    return jsonify({"success": True})
+
+@app.route('/api/download-progress', methods=['GET'])
+def get_download_progress():
+    global download_progress
+    return jsonify(download_progress)
+
+@app.route('/api/apply-update', methods=['POST'])
+def apply_update():
+    exe_path = sys.executable
+    exe_dir = os.path.dirname(exe_path)
+    exe_name = os.path.basename(exe_path)
+    parent_dir = os.path.dirname(exe_dir)
+    
+    temp_zip_path = os.path.join(parent_dir, "update_temp.zip")
+    temp_extract_dir = os.path.join(parent_dir, "update_temp")
+    bat_path = os.path.join(parent_dir, "update.bat")
+    
+    import zipfile
+    import shutil
+    
+    if os.path.exists(temp_extract_dir):
+        shutil.rmtree(temp_extract_dir, ignore_errors=True)
+    os.makedirs(temp_extract_dir, exist_ok=True)
+    
+    try:
+        with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_extract_dir)
+    except Exception as e:
+        print(f"[업데이트] 압축 해제 실패: {e}")
+        return jsonify({"success": False, "error": f"압축 해제 실패: {str(e)}"})
+        
+    exe_found_dir = temp_extract_dir
+    items = os.listdir(temp_extract_dir)
+    if len(items) == 1 and os.path.isdir(os.path.join(temp_extract_dir, items[0])):
+        exe_found_dir = os.path.join(temp_extract_dir, items[0])
+        
+    if not os.path.exists(os.path.join(exe_found_dir, exe_name)):
+        return jsonify({"success": False, "error": "압축 파일 내에 실행 파일이 없습니다."})
+
+    bat_content = f"""@echo off
+title DSLR File Transfer Update
+echo [Update] Waiting for app to close...
+timeout /t 2 /nobreak > nul
+:loop
+tasklist | find /i "{exe_name}" > nul
+if not errorlevel 1 (
+    timeout /t 1 /nobreak > nul
+    goto loop
+)
+echo [Update] Replacing application folder...
+rmdir /s /q "{exe_dir}"
+if exist "{exe_dir}" (
+    timeout /t 1 /nobreak > nul
+    goto loop
+)
+move /y "{exe_found_dir}" "{exe_dir}" > nul
+rmdir /s /q "{temp_extract_dir}" > nul 2>&1
+del "{temp_zip_path}" > nul 2>&1
+echo [Update] Starting app...
+cd /d "{exe_dir}"
+start "" "{exe_name}"
+del "%~f0"
+"""
+    try:
+        with open(bat_path, "w", encoding="utf-8") as f:
+            f.write(bat_content)
+            
+        # PyInstaller 환경 변수 제거 (새 앱이 기존 임시 폴더를 재사용하려다 DLL 로드 실패하는 현상 방지)
+        env = os.environ.copy()
+        
+        # PyInstaller가 설정한 내부 환경변수를 모두 제거하여 자식 프로세스(새 앱)가 완전히 깨끗한 상태로 실행되도록 함
+        for key in list(env.keys()):
+            if key.startswith('_PYI_') or key.startswith('_MEI'):
+                env.pop(key, None)
+                
+        # PATH 환경 변수에서 현재 _MEIPASS 경로를 제거
+        mei_path = getattr(sys, '_MEIPASS', None)
+        if mei_path and 'PATH' in env:
+            paths = env['PATH'].split(os.pathsep)
+            paths = [p for p in paths if mei_path.lower() not in p.lower()]
+            env['PATH'] = os.pathsep.join(paths)
+
+        # 백그라운드로 스크립트 실행
+        subprocess.Popen(["cmd.exe", "/c", bat_path], creationflags=subprocess.CREATE_NO_WINDOW, env=env, cwd=parent_dir)
+        # 앱 종료 예약
+        threading.Thread(target=lambda: (time.sleep(1.0), os._exit(0)), daemon=True).start()
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"[업데이트] 적용 스크립트 생성 실패: {e}")
+        return jsonify({"success": False, "error": str(e)})
 
 @app.route('/api/shutdown', methods=['POST'])
 def shutdown_app():

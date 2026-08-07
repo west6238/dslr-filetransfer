@@ -26,6 +26,15 @@
             <button id="btn-open-settings" class="btn-icon" title="가져오기 설정">⚙️</button>
         </header>
 
+        <!-- Update Banner -->
+        <div id="update-banner" class="update-banner hidden" style="background-color: #d1ecf1; color: #0c5460; padding: 10px 20px; border-bottom: 1px solid #bee5eb; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 14px;">
+                <strong id="update-banner-title">🎉 새 버전 업데이트 가능!</strong>
+                <span id="update-version-text" style="margin-left: 10px;">vX.X.X</span>
+            </div>
+            <button id="btn-do-update" class="btn primary hidden" style="padding: 4px 12px; font-size: 13px;">지금 업데이트</button>
+        </div>
+
         <!-- Main View (Home) -->
         <main id="view-home" class="view-panel active">
             <div id="status-card" class="status-card disconnected">
@@ -184,6 +193,22 @@
                 <div style="display: flex; gap: 10px; justify-content: center;">
                     <button id="btn-delete-no" class="btn secondary">아니오 (유지)</button>
                     <button id="btn-delete-yes" class="btn primary" style="background-color: #e74c3c; border-color: #e74c3c;">예 (삭제)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Progress Modal -->
+        <div id="modal-update-progress" class="modal-overlay hidden" style="z-index: 1100;">
+            <div class="modal-card" style="text-align: center; padding: 30px; width: 350px;">
+                <h3 style="margin-top: 0;">🚀 업데이트 다운로드 중</h3>
+                <p id="update-status-text" style="margin-bottom: 20px; font-size: 14px; color: var(--text-muted);">새 버전을 다운로드하고 있습니다...</p>
+                <div class="progress-box" style="margin-bottom: 0;">
+                    <div class="progress-bar-bg" style="height: 12px;">
+                        <div id="update-progress-fill" class="progress-bar-fill" style="width: 0%; transition: width 0.2s;"></div>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 13px; font-weight: bold; color: var(--primary-color);">
+                        <span id="update-progress-pct">0%</span>
+                    </div>
                 </div>
             </div>
         </div>

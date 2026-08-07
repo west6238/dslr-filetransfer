@@ -464,26 +464,28 @@ class CameraHandler:
 
             device_item = devices[0][1]
             deleted_count = 0
-            copied_files = set(self.fetch_state.get('copied_files', []))
 
             def _traverse_and_delete(folder_obj):
                 nonlocal deleted_count
                 if not folder_obj:
                     return
                 try:
-                    for item in folder_obj.Items():
+                    items = folder_obj.Items()
+                    has_files = False
+                    for item in items:
                         if item.IsFolder:
                             _traverse_and_delete(item.GetFolder)
                         else:
-                            name = item.Name
-                            if name in copied_files:
-                                self.delete_state['current_file'] = name
-                                try:
-                                    item.InvokeVerb("delete")
-                                    deleted_count += 1
-                                    self.delete_state['deleted'] = deleted_count
-                                except Exception as e_del:
-                                    print(f"Error deleting {name}:", e_del)
+                            has_files = True
+
+                    if has_files:
+                        self.delete_state['current_file'] = '카메라 폴더 파일 일괄 삭제 중...'
+                        try:
+                            items.InvokeVerbEx('delete')
+                            deleted_count += items.Count
+                            self.delete_state['deleted'] = deleted_count
+                        except Exception as e_del:
+                            print("Error bulk deleting items in folder:", e_del)
                 except Exception as e:
                     print("Error traversing during delete:", e)
 

@@ -5,6 +5,7 @@ let wasConnected = false;
 document.addEventListener('DOMContentLoaded', () => {
     initUI();
     startStatusPolling();
+    checkForUpdates();
 });
 
 let isRefreshing = false;
@@ -38,8 +39,15 @@ function initUI() {
     
     // Delete Confirmation
     document.getElementById('btn-delete-yes').addEventListener('click', () => {
-        document.getElementById('modal-delete-confirm').classList.add('hidden');
-        fetch('/api/delete', { method: 'POST' });
+        // 일괄삭제한다는 안내 표시
+        const modal = document.getElementById('modal-delete-confirm');
+        modal.innerHTML = '<div class="modal-card"><p>일괄 삭제를 시작합니다...</p></div>';
+        
+        // 약간의 딜레이 후 삭제 요청 (사용자가 텍스트를 볼 수 있도록)
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            fetch('/api/fetch/delete-originals', { method: 'POST' });
+        }, 1000);
     });
 
     document.getElementById('btn-delete-no').addEventListener('click', () => {
@@ -53,6 +61,122 @@ function initUI() {
     
     // Directory Picker
     document.getElementById('btn-select-dir').addEventListener('click', handleSelectDir);
+
+    // Update
+    const btnUpdate = document.getElementById('btn-do-update');
+    if (btnUpdate) {
+        btnUpdate.addEventListener('click', handleDoUpdate);
+    }
+}
+
+let latestUpdateData = null;
+
+function checkForUpdates() {
+    fetch('/api/check-update')
+        .then(res => res.json())
+        .then(data => {
+            const banner = document.getElementById('update-banner');
+            const title = document.getElementById('update-banner-title');
+            const versionText = document.getElementById('update-version-text');
+            const btnUpdate = document.getElementById('btn-do-update');
+            
+            // 데이터가 없거나 에러가 있으면 배너 숨김
+            if (data.error || !data.current_version) {
+                return;
+            }
+
+            banner.classList.remove('hidden');
+
+            if (data.has_update && data.assets && data.assets.length > 0) {
+                latestUpdateData = data;
+                title.innerText = "🎉 새 버전 업데이트 가능!";
+                versionText.innerText = data.current_version + " ➔ " + data.latest_version;
+                btnUpdate.classList.remove('hidden');
+                
+                banner.style.backgroundColor = "#d1ecf1";
+                banner.style.color = "#0c5460";
+                banner.style.borderBottom = "1px solid #bee5eb";
+            } else {
+                title.innerText = "✅ 최신 버전을 사용 중입니다.";
+                versionText.innerText = data.current_version;
+                btnUpdate.classList.add('hidden');
+                
+                banner.style.backgroundColor = "#e8f5e9";
+                banner.style.color = "#2e7d32";
+                banner.style.borderBottom = "1px solid #c8e6c9";
+            }
+        })
+        .catch(err => console.error("Update check failed:", err));
+}
+
+let updatePollInterval = null;
+
+function handleDoUpdate() {
+    if (!latestUpdateData || !latestUpdateData.assets || latestUpdateData.assets.length === 0) return;
+    
+    const zipAsset = latestUpdateData.assets.find(a => a.name.endsWith('.zip'));
+    if (!zipAsset) {
+        alert("업데이트 압축 파일(.zip)을 찾을 수 없습니다.");
+        return;
+    }
+
+    // Hide banner, show progress modal
+    document.getElementById('update-banner').classList.add('hidden');
+    document.getElementById('modal-update-progress').classList.remove('hidden');
+
+    fetch('/api/download-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: zipAsset.browser_download_url })
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            updatePollInterval = setInterval(pollUpdateProgress, 500);
+        } else {
+            alert("다운로드 시작 실패: " + data.error);
+            document.getElementById('modal-update-progress').classList.add('hidden');
+        }
+    }).catch(err => {
+        alert("다운로드 요청 오류");
+        document.getElementById('modal-update-progress').classList.add('hidden');
+    });
+}
+
+function pollUpdateProgress() {
+    fetch('/api/download-progress')
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'downloading' || data.status === 'completed') {
+                document.getElementById('update-progress-fill').style.width = data.percent + '%';
+                document.getElementById('update-progress-pct').innerText = data.percent + '%';
+                
+                if (data.status === 'completed') {
+                    clearInterval(updatePollInterval);
+                    document.getElementById('update-status-text').innerText = "다운로드 완료! 업데이트를 적용합니다...";
+                    setTimeout(applyUpdate, 1000);
+                }
+            } else if (data.status === 'error') {
+                clearInterval(updatePollInterval);
+                alert("업데이트 다운로드 중 오류 발생: " + data.error);
+                document.getElementById('modal-update-progress').classList.add('hidden');
+            }
+        })
+        .catch(console.error);
+}
+
+function applyUpdate() {
+    fetch('/api/apply-update', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // The backend will shutdown and run update.bat
+                // We'll show a closing flow and then close the browser window.
+                document.getElementById('modal-update-progress').classList.add('hidden');
+                appCloseFlow("업데이트 적용을 위해 앱이 재시작됩니다.");
+            } else {
+                alert("업데이트 적용 실패: " + data.error);
+                document.getElementById('modal-update-progress').classList.add('hidden');
+            }
+        });
 }
 
 function startStatusPolling() {
