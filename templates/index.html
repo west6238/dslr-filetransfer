@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSLR 디지털 카메라 AutoRun v2</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>">
+    <script>
+        // Force the browser window to resize to 800x800 (accounting for titlebar) 
+        // when launched as an Edge app.
+        window.resizeTo(800, 800);
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <span class="brand-icon">📷</span>
+                <h1>DSLR 디지털 카메라 AutoRun <span class="version-badge">v2.0</span></h1>
+            </div>
+            <button id="btn-open-settings" class="btn-icon" title="가져오기 설정">⚙️</button>
+        </header>
+
+        <!-- Main View (Home) -->
+        <main id="view-home" class="view-panel active">
+            <div id="status-card" class="status-card disconnected">
+                <div class="status-pulse"></div>
+                <div class="status-info">
+                    <h2 id="status-text">DSLR 디지털 카메라 연결 대기 중...</h2>
+                    <p id="model-text">PTP/MTP DSLR 디지털 카메라(예: Nikon D90)를 USB 포트에 연결해주세요.</p>
+                </div>
+            </div>
+
+            <div id="action-group" class="action-grid disabled">
+                <button id="btn-open-device" class="action-btn">
+                    <span class="btn-emoji">📁</span>
+                    <div class="btn-text">
+                        <strong>장치를 열어 파일 보기</strong>
+                        <small>윈도우 탐색기에서 DSLR 디지털 카메라 내부 파일 탐색</small>
+                    </div>
+                </button>
+
+                <button id="btn-start-scan" class="action-btn primary">
+                    <span class="btn-emoji">📸</span>
+                    <div class="btn-text">
+                        <strong>사진 및 비디오 가져오기</strong>
+                        <small>미디어 파일 검색 후 내 PC로 복사</small>
+                    </div>
+                </button>
+            </div>
+        </main>
+
+        <!-- Scan & Fetch View -->
+        <main id="view-process" class="view-panel hidden">
+            <div class="process-card">
+                <h2 id="process-title">미디어 파일 스캔 중</h2>
+                <p id="process-sub">DSLR 디지털 카메라 저장소에서 사진과 비디오를 탐색하고 있습니다.</p>
+
+                <!-- Progress Bar Bar -->
+                <div class="progress-box">
+                    <div class="progress-bar-bg">
+                        <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="progress-labels">
+                        <span id="progress-counter">사진 및 비디오를 0개 찾음</span>
+                        <span id="progress-file">검색 중...</span>
+                    </div>
+                </div>
+
+                <!-- Tag Option Input (Hidden during scanning, visible when scan completes) -->
+                <div id="tag-option-container" class="tag-option-container hidden">
+                    <label for="input-tag" class="input-label">📌 가져온 사진 폴더 태그 지정:</label>
+                    <div class="tag-input-group">
+                        <input type="text" id="input-tag" list="tag-history-list" placeholder="예: 제주도여행, 가족모임, 스냅사진" autocomplete="off">
+                        <datalist id="tag-history-list"></datalist>
+                    </div>
+                    <p class="tag-help">※ 태그 입력 시 <code>YYYY-MM-DD_태그이름</code> 형태로 폴더가 생성됩니다.</p>
+                </div>
+
+                <!-- Process Action Buttons -->
+                <div class="process-btn-group">
+                    <button id="btn-cancel-scan" class="btn secondary">취소</button>
+                    <button id="btn-execute-fetch" class="btn primary hidden">가져오기 실행</button>
+                    <button id="btn-open-save-folder" class="btn success hidden">📁 저장 폴더 열기</button>
+                    <button id="btn-back-home" class="btn secondary hidden">🏠 메인 화면으로</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Settings Modal -->
+        <div id="modal-settings" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>⚙️ 가져오기 설정</h3>
+                    <button id="btn-close-modal" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-chkbox-tag">
+                            <span class="slider"></span>
+                        </label>
+                        <div class="setting-text">
+                            <strong>태그 지정 옵션 사용</strong>
+                            <small>가져오기 실행 전 태그 이름을 묻는 창을 표시합니다.</small>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-chkbox-autorun">
+                            <span class="slider"></span>
+                        </label>
+                        <div class="setting-text">
+                            <strong>자동 가져오기 실행</strong>
+                            <small>DSLR 디지털 카메라 연결 시 자동으로 스캔 및 가져오기를 진행합니다.</small>
+                        </div>
+                    </div>
+                    
+                    <div id="setting-autorun-tag-container" class="tag-option-container" style="margin-left: 50px; margin-top: -8px; margin-bottom: 10px; display: none;">
+                        <label for="setting-autorun-tag" class="input-label" style="font-size: 13px;">📌 자동 복사에 쓰일 태그 지정:</label>
+                        <div class="tag-input-group" style="margin-top: 4px;">
+                            <input type="text" id="setting-autorun-tag" list="tag-history-list" placeholder="예: 제주도여행, 가족모임, 스냅사진" autocomplete="off" style="font-size: 13px; padding: 6px 8px;">
+                        </div>
+                        <p class="tag-help" style="font-size: 11px; margin-top: 4px; color: #7f8c8d;">※ 태그 입력 시 <code>YYYY-MM-DD_태그이름</code> 형태로 폴더가 생성됩니다.</p>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="setting-chkbox-explorer">
+                            <span class="slider"></span>
+                        </label>
+                        <div class="setting-text">
+                            <strong>완료 후 탐색기 열기</strong>
+                            <small>가져오기가 완료되면 자동으로 저장 폴더를 엽니다.</small>
+                        </div>
+                    </div>
+
+
+                    <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
+                    
+                    <div class="setting-group">
+                        <h4 style="margin-top:0; margin-bottom: 8px; font-size: 14px; color: var(--text-color);">Windows 자동 실행(AutoPlay) 레지스트리</h4>
+                        <div class="autorun-status-box" style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.03); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="status-indicator">
+                                <strong>현재 상태: </strong>
+                                <span id="autorun-status-text" style="color: #666;">확인 중...</span>
+                            </div>
+                            <div class="autorun-actions" style="display: flex; gap: 8px;">
+                                <button id="btn-autorun-register" class="btn primary" style="padding: 6px 12px; font-size: 13px; display: none;">등록</button>
+                                <button id="btn-autorun-unregister" class="btn secondary" style="padding: 6px 12px; font-size: 13px; display: none;">삭제</button>
+                            </div>
+                        </div>
+                        <p style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+                            ※ 등록/삭제 시 권한 허용(UAC) 창이 표시됩니다.
+                        </p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="setting-save-dir" class="input-label">📂 기본 저장 폴더 경로:</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="setting-save-dir" class="text-input" placeholder="C:\Users\...\Pictures" readonly style="flex-grow: 1;">
+                            <button id="btn-select-dir" class="btn secondary" style="flex-shrink: 0; padding: 10px 16px;">폴더 선택</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button id="btn-cancel-settings" class="btn secondary">취소</button>
+                    <button id="btn-save-settings" class="btn primary">설정 저장</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirm Modal -->
+        <div id="modal-delete-confirm" class="modal-overlay hidden" style="z-index: 1000;">
+            <div class="modal-card" style="text-align: center; padding: 30px;">
+                <h3 style="margin-top: 0;">🗑️ 원본 삭제</h3>
+                <p style="margin-bottom: 20px;">가져오기가 성공적으로 완료되었습니다.<br>카메라에서 원본 파일을 삭제하시겠습니까?</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button id="btn-delete-no" class="btn secondary">아니오 (유지)</button>
+                    <button id="btn-delete-yes" class="btn primary" style="background-color: #e74c3c; border-color: #e74c3c;">예 (삭제)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
