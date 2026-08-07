@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSLR AutoRun - Download</title>
+    <meta name="description" content="DSLR 디지털 카메라에서 PC로 사진과 비디오를 빠르고 편리하게 자동 전송하세요.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Pretendard:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-image: radial-gradient(circle at top right, #312e81 0%, transparent 40%),
+                              radial-gradient(circle at bottom left, #1e1b4b 0%, transparent 40%);
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            padding: 3rem;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .icon-container {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, #a5b4fc, #c4b5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        p.description {
+            font-size: 1.125rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2.5rem;
+            border-radius: 9999px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .download-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(79, 70, 229, 0.5);
+        }
+
+        .download-btn:active {
+            transform: translateY(1px);
+        }
+
+        .download-btn.loading {
+            background: #334155;
+            cursor: wait;
+            box-shadow: none;
+        }
+
+        .download-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .version-info {
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .features {
+            margin-top: 3.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            text-align: left;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 2.5rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 16px;
+            transition: background 0.3s;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: #e2e8f0;
+        }
+
+        .feature-card p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .container { padding: 2rem; width: 95%; }
+            .features { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="icon-container">📷</div>
+        <h1>DSLR AutoRun</h1>
+        <p class="description">
+            카메라를 USB로 연결만 하면 알아서 사진을 PC로 복사하고, 깔끔하게 원본을 지워줍니다. 
+            지금 바로 가장 편리한 파일 전송을 경험하세요.
+        </p>
+
+        <a href="#" id="download-btn" class="download-btn loading">
+            <svg class="download-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span id="btn-text">최신 버전 확인 중...</span>
+        </a>
+
+        <div class="version-info" id="version-info" style="display: none;">
+            <span>최신 버전:</span>
+            <span class="badge" id="version-badge">v1.0.0</span>
+            <span style="margin: 0 8px;">|</span>
+            <span id="release-date">2026-08-07</span>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">⚡️</div>
+                <h3>자동 실행 및 전송</h3>
+                <p>케이블을 연결하자마자 자동으로 실행되어 지정된 폴더로 미디어 파일을 전송합니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🗑️</div>
+                <h3>스마트한 원본 삭제</h3>
+                <p>전송이 완료되면 카메라의 원본 파일을 자동으로 비워 용량을 쾌적하게 유지합니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <h3>자동 업데이트</h3>
+                <p>최초 1회만 설치해 두시면, 이후에는 앱 내에서 자동으로 최신 버전으로 업데이트됩니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GitHub API를 통해 최신 릴리스 정보 가져오기
+        const REPO = 'west6238/dslr-filetransfer'; // 변경하지 마세요
+        const API_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
+        
+        const btn = document.getElementById('download-btn');
+        const btnText = document.getElementById('btn-text');
+        const versionInfo = document.getElementById('version-info');
+        const versionBadge = document.getElementById('version-badge');
+        const releaseDate = document.getElementById('release-date');
+
+        fetch(API_URL)
+            .then(response => {
+                if (!response.ok) throw new Error('릴리스를 찾을 수 없습니다.');
+                return response.json();
+            })
+            .then(data => {
+                const exeAsset = data.assets.find(asset => asset.name.endsWith('.exe'));
+                
+                if (exeAsset) {
+                    // 다운로드 링크 설정
+                    btn.href = exeAsset.browser_download_url;
+                    btn.classList.remove('loading');
+                    btnText.innerText = 'Windows용 다운로드';
+                    
+                    // 버전 및 날짜 표시
+                    versionBadge.innerText = data.tag_name;
+                    const date = new Date(data.published_at);
+                    releaseDate.innerText = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+                    versionInfo.style.display = 'flex';
+                } else {
+                    throw new Error('실행 파일을 찾을 수 없습니다.');
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                btnText.innerText = '다운로드 불가';
+                btn.style.pointerEvents = 'none';
+                btn.style.opacity = '0.7';
+                
+                // GitHub 리포지토리로 유도하는 대체 링크
+                btn.href = `https://github.com/${REPO}/releases`;
+                btn.style.pointerEvents = 'auto';
+                btnText.innerText = 'GitHub에서 보기';
+                btn.classList.remove('loading');
+            });
+    </script>
+</body>
+</html>
