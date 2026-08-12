@@ -76,7 +76,7 @@ def check_device_and_launch(device_id):
             launch_app()
             break
 
-def main():
+def wmi_watcher_thread(stop_event):
     import win32com.client
     import pythoncom
 
@@ -91,20 +91,14 @@ def main():
         "AND TargetInstance.PNPClass = 'WPD'"
     )
     
-    print("Checking for existing connected cameras...")
-    pnp_devices = wmi.InstancesOf("Win32_PnPEntity")
-    for instance in pnp_devices:
-        try:
-            if instance.PNPClass == 'WPD' and instance.DeviceID:
-                check_device_and_launch(instance.DeviceID)
-        except Exception:
-            pass
-            
-    print("Background USB detector started...")
+    print("Background USB detector started in thread...")
     
-    while True:
+    while not stop_event.is_set():
         try:
-            event = watcher.NextEvent()
+            # NextEvent blocks, so we use a small timeout if possible, 
+            # but win32com NextEvent doesn't easily support timeout.
+            # We will just let it block and when the process exits, it gets killed.
+            event = watcher.NextEvent(2000)
             instance = event.Properties_("TargetInstance").Value
             
             # WPD device connected
@@ -113,7 +107,67 @@ def main():
                 check_device_and_launch(device_id)
                 
         except Exception as e:
-            time.sleep(1)
+            # Exception can be timeout (wbemErrTimedout), which is normal.
+            time.sleep(0.5)
+
+def create_image():
+    # Generate a simple icon image using PIL
+    from PIL import Image, ImageDraw
+    width = 64
+    height = 64
+    color1 = (41, 128, 185)
+    color2 = (52, 152, 219)
+    
+    image = Image.new('RGB', (width, height), color1)
+    dc = ImageDraw.Draw(image)
+    dc.rectangle(
+        (width // 4, height // 4, width * 3 // 4, height * 3 // 4),
+        fill=color2
+    )
+    return image
+
+def on_open_ui(icon, item):
+    launch_app()
+
+def on_exit(icon, item, stop_event):
+    stop_event.set()
+    icon.stop()
+
+def main():
+    import win32com.client
+    import pythoncom
+    import pystray
+    from pystray import MenuItem as item
+    
+    pythoncom.CoInitialize()
+    wmi = win32com.client.GetObject("winmgmts:")
+    
+    print("Checking for existing connected cameras...")
+    pnp_devices = wmi.InstancesOf("Win32_PnPEntity")
+    for instance in pnp_devices:
+        try:
+            if instance.PNPClass == 'WPD' and instance.DeviceID:
+                check_device_and_launch(instance.DeviceID)
+        except Exception:
+            pass
+
+    stop_event = threading.Event()
+    
+    # Start WMI watcher in a background thread
+    t = threading.Thread(target=wmi_watcher_thread, args=(stop_event,), daemon=True)
+    t.start()
+
+    # Setup system tray icon
+    menu = pystray.Menu(
+        item('UI 열기', on_open_ui, default=True),
+        item('종료', lambda icon, menu_item: on_exit(icon, menu_item, stop_event))
+    )
+    
+    icon_image = create_image()
+    icon = pystray.Icon("dslr_filetransfer_detector", icon_image, "DSLR USB 감시 중...", menu)
+    
+    print("Starting system tray icon...")
+    icon.run()
 
 if __name__ == "__main__":
     main()

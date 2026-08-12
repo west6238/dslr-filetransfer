@@ -1,3 +1,5 @@
 Flask==3.0.0
 pywebview==4.4.1
 pywin32==306
+pystray>=0.19.3
+pillow>=10.0.0

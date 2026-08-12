@@ -1,18 +1,61 @@
-(조건 추가됨) 아래 use-caes 로직 수정-보완 필요한 부분을 다시 검토해줘
-```
-배포판 (pyinstaller로 제작) executable file을 클릭하면
-   - `detector` 모드로 실행 시작 .
-   - USB 연결 체크해서 
-	- digital camera가 없으면 백그라운드 모니터링 지속
-		. `app` 실행 파일을 더블클릭 실행하면, (camera 연결없이) app 화면 띄운다.
-		.  app 화면 떠 있는 상태에서도 camera-USB 연결은 모니터링 한다.
-		. camera usb 연결되면 사용자 UI 조작에 따라 실행된다.
-	- digital camera가 있으면 `detector` 모드 pending... 
-		. `app` browser 실행
-		. `설정` 에서 기기 등록 신규 / update 지원
-	- `app` 실행 중단 / 완료되면, 백그라운드 모니터링 다시 시작
-		. `detector`는 사용자 - 의도적인 processor kill 로만 중단된다.
+# 시스템 트레이(숨겨진 아이콘) 지원 기능 구현 플랜
 
+현재 `dslr-filetransfer` 앱은 카메라 감지를 위해 백그라운드에서 `usb_detector.py`를 실행하고 있습니다. 이 백그라운드 프로세스에 시스템 트레이 아이콘을 추가하여 사용자가 현재 앱이 백그라운드에서 감시 중인지 시각적으로 확인할 수 있고, 수동으로 UI를 열거나 앱을 완전 종료할 수 있도록 구현할 수 있습니다.
 
-개발 모드에서는 터미널에서 실행한다.
+## User Review Required
+
+> [!IMPORTANT]
+> 시스템 트레이 메뉴로 **UI 열기** 및 **앱 종료** 버튼을 제공할 계획입니다. 혹시 트레이 메뉴에 추가로 필요하신 항목이 있다면 알려주세요.
+> 기본 트레이 아이콘은 파이썬 코드로 간단한 이미지를 그려서(또는 기본 아이콘으로) 사용할 예정입니다. 별도로 사용하고자 하시는 `.ico` 또는 `.png` 파일이 있으시다면, 해당 경로를 알려주시면 적용해 드리겠습니다.
+
+## Proposed Changes
+
+### 앱 아키텍처 다이어그램 (변경 후)
+아래 다이어그램은 시스템 트레이 기능이 추가되었을 때의 전체적인 동작 구조를 보여줍니다.
+
+```mermaid
+flowchart TD
+    subgraph Background Process ["usb_detector.py (Background)"]
+        direction TB
+        M[Main Thread] -->|Runs| T[pystray System Tray Icon]
+        M -->|Starts| W[WMI Event Watcher Thread]
+        
+        W -.->|Detects USB Camera| LA(launch_app)
+        T -.->|User clicks 'UI 열기'| LA
+        T -.->|User clicks '종료'| Exit[Terminate Process]
+    end
+
+    subgraph UI Process ["app.py --ui (Foreground)"]
+        direction TB
+        F[Flask Web Server] -->|Serves| B[Web Browser / Edge App Mode]
+        HB[Heartbeat Monitor] -.->|Timeout| Shutdown[Terminate UI]
+        B -.->|Close window| Shutdown
+    end
+
+    LA ==>|Spawns new process| UI Process
 ```
+
+---
+
+### 의존성 패키지 변경
+
+#### [MODIFY] [requirements.txt](file:///C:/works/dslr-filetransfer/requirements.txt)
+트레이 아이콘 구현을 위해 `pystray`와 `pillow` 패키지를 추가합니다.
+
+---
+
+### 백그라운드 카메라 감지기 변경
+
+#### [MODIFY] [usb_detector.py](file:///C:/works/dslr-filetransfer/usb_detector.py)
+- 기존의 WMI 이벤트 루프(`watcher.NextEvent()`)는 블로킹(대기) 상태를 유지하므로, 이를 별도의 백그라운드 스레드로 분리합니다. 
+- 메인 스레드에서는 `pystray`를 이용해 시스템 트레이 아이콘을 띄우고 이벤트를 처리합니다.
+- 트레이 우클릭 메뉴 구현:
+  - **UI 열기**: 수동으로 `app.py --ui`를 호출하여 화면을 엽니다.
+  - **종료**: 감지 스레드 및 트레이 아이콘을 종료하고 프로세스를 완전히 닫습니다.
+
+## Verification Plan
+
+### Manual Verification
+1. 앱을 실행하면 윈도우 우측 하단 시스템 트레이에 아이콘이 나타나는지 확인합니다.
+2. 아이콘을 우클릭하여 'UI 열기'와 '종료' 메뉴가 정상 동작하는지 테스트합니다.
+3. 트레이에 아이콘이 있는 상태에서 카메라(USB)를 연결했을 때 정상적으로 자동 실행(UI 팝업)이 유지되는지 확인합니다.
