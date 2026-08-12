@@ -48,12 +48,18 @@ def launch_app():
         return # Already running
         
     app_path = os.path.join(os.path.dirname(__file__), 'app.py')
+    
+    # 터미널 창(콘솔) 깜빡임 방지를 위한 플래그
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW
+        
     if getattr(sys, 'frozen', False):
         app_path = os.path.join(os.path.dirname(sys.executable), 'app.exe')
-        subprocess.Popen([app_path, "--ui"])
+        subprocess.Popen([app_path, "--ui"], creationflags=creationflags)
     else:
         # Development mode
-        subprocess.Popen([sys.executable, app_path, "--ui"])
+        subprocess.Popen([sys.executable, app_path, "--ui"], creationflags=creationflags)
 
 def check_device_and_launch(device_id):
     if not device_id:

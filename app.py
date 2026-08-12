@@ -406,10 +406,16 @@ if __name__ == '__main__':
         # User double-clicked app.exe or ran python app.py manually
         if not is_detector_running():
             print("[INFO] 첫 번째 실행: 백그라운드 에이전트(detector) 모드로 숨어 들어갑니다.")
+            
+            # 터미널 창(콘솔) 깜빡임 방지를 위한 플래그
+            creationflags = 0
+            if sys.platform == "win32":
+                creationflags = subprocess.CREATE_NO_WINDOW
+                
             if getattr(sys, 'frozen', False):
-                subprocess.Popen([sys.executable, "--detector"])
+                subprocess.Popen([sys.executable, "--detector"], creationflags=creationflags)
             else:
-                subprocess.Popen([sys.executable, "app.py", "--detector"])
+                subprocess.Popen([sys.executable, "app.py", "--detector"], creationflags=creationflags)
             
             # 개발 모드(터미널)일 때는 바로 UI를 띄워주는 것이 테스트에 유리하지만,
             # 시나리오의 완벽한 일치를 위해 배포판과 동일하게 detector만 띄우고 종료합니다.
