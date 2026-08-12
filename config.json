@@ -1,0 +1,20 @@
+{
+    "chkbox_tag": true,
+    "chkbox_autorun": false,
+    "chkbox_explorer": false,
+    "save_dir": "C:/temp",
+    "foldernaming": "가져온 날짜 + 태그",
+    "taglist": [
+        "test",
+        "제주도여행",
+        "가족모임",
+        "스냅촬영",
+        "테스트"
+    ],
+    "chkbox_delete_after": false,
+    "restrict_to_nikon": true,
+    "last_tag": "제주도여행",
+    "autorun_tag": "",
+    "registered_cameras": [],
+    "autorun_only_registered": true
+}

@@ -154,20 +154,44 @@
                     <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
                     
                     <div class="setting-group">
-                        <h4 style="margin-top:0; margin-bottom: 8px; font-size: 14px; color: var(--text-color);">Windows 자동 실행(AutoPlay) 레지스트리</h4>
+                        <h4 style="margin-top:0; margin-bottom: 8px; font-size: 14px; color: var(--text-color);">백그라운드 감지 에이전트 (시작프로그램)</h4>
                         <div class="autorun-status-box" style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.03); border-radius: 8px; border: 1px solid var(--border-color);">
                             <div class="status-indicator">
                                 <strong>현재 상태: </strong>
                                 <span id="autorun-status-text" style="color: #666;">확인 중...</span>
                             </div>
                             <div class="autorun-actions" style="display: flex; gap: 8px;">
-                                <button id="btn-autorun-register" class="btn primary" style="padding: 6px 12px; font-size: 13px; display: none;">등록</button>
-                                <button id="btn-autorun-unregister" class="btn secondary" style="padding: 6px 12px; font-size: 13px; display: none;">삭제</button>
+                                <button id="btn-autorun-register" class="btn primary" style="padding: 6px 12px; font-size: 13px; display: none;">활성화</button>
+                                <button id="btn-autorun-unregister" class="btn secondary" style="padding: 6px 12px; font-size: 13px; display: none;">비활성화</button>
                             </div>
                         </div>
                         <p style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
-                            ※ 등록/삭제 시 권한 허용(UAC) 창이 표시됩니다.
+                            ※ 활성화 시 윈도우 시작 시 백그라운드에 에이전트가 등록되어 카메라 연결을 즉시 감지합니다.
                         </p>
+                    </div>
+
+                    <div class="setting-group" style="margin-top: 15px;">
+                        <h4 style="margin-top:0; margin-bottom: 8px; font-size: 14px; color: var(--text-color);">등록된 기기 관리</h4>
+                        
+                        <div style="margin-bottom: 10px; font-size: 13px;">
+                            <label style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="setting-autorun-only-registered">
+                                <span>등록된 기기만 자동 실행 허용</span>
+                            </label>
+                        </div>
+                        
+                        <div id="camera-list-container" style="background: rgba(0,0,0,0.03); border-radius: 8px; border: 1px solid var(--border-color); padding: 10px; max-height: 150px; overflow-y: auto; margin-bottom: 10px;">
+                            <!-- List injected by JS -->
+                        </div>
+
+                        <div id="current-camera-box" style="display: none; align-items: center; justify-content: space-between; padding: 10px; background: #e8f4fd; border-radius: 8px; border: 1px solid #b6d4fe;">
+                            <div>
+                                <strong style="color: #084298;">현재 연결된 기기: </strong>
+                                <span id="current-camera-model" style="color: #052c65;"></span><br>
+                                <small id="current-camera-serial" style="color: #084298;"></small>
+                            </div>
+                            <button id="btn-register-camera" class="btn success" style="padding: 6px 12px; font-size: 13px;">이 기기 등록</button>
+                        </div>
                     </div>
 
                     <div class="setting-group">

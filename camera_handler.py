@@ -18,6 +18,7 @@ class CameraHandler:
     def __init__(self):
         self.is_connected = False
         self.device_name = None
+        self.device_serial = None
         self.device_item = None
         
         self.initial_connection_checked = False
@@ -71,6 +72,10 @@ class CameraHandler:
                         config["last_tag"] = ""
                     if "taglist" not in config:
                         config["taglist"] = ["제주도여행", "가족모임", "테스트"]
+                    if "registered_cameras" not in config:
+                        config["registered_cameras"] = []
+                    if "autorun_only_registered" not in config:
+                        config["autorun_only_registered"] = True
                     return config
             except Exception as e:
                 print("Error loading config.json:", e)
@@ -84,7 +89,9 @@ class CameraHandler:
             "save_dir": os.path.expanduser("~\\Pictures"),
             "foldernaming": "가져온 날짜 + 태그",
             "taglist": ["제주도여행", "가족모임", "테스트"],
-            "last_tag": ""
+            "last_tag": "",
+            "registered_cameras": [],
+            "autorun_only_registered": True
         }
         self._save_config(default_config)
         return default_config
@@ -141,6 +148,7 @@ class CameraHandler:
             self.is_connected = True
             self.device_name = devices[0][0]
             self.device_item = devices[0][1]
+            self.device_serial = self._fetch_wmi_serial(self.device_name)
             
             if not self.initial_connection_checked:
                 # App started with camera already connected -> Do nothing but wait
@@ -155,10 +163,24 @@ class CameraHandler:
             self.initial_connection_checked = True
             self.is_connected = False
             self.device_name = None
+            self.device_serial = None
             self.device_item = None
             if was_connected:
                 self.cancel_scan()
                 self._auto_fetch_pending = False
+
+    def _fetch_wmi_serial(self, target_name):
+        try:
+            wmi_obj = win32com.client.GetObject("winmgmts:")
+            pnp_devices = wmi_obj.InstancesOf("Win32_PnPEntity")
+            for pnp in pnp_devices:
+                if pnp.PNPClass == 'WPD' and pnp.Caption and target_name in pnp.Caption:
+                    if pnp.DeviceID:
+                        # DeviceID format: USB\VID_04B0&PID_0412\000002090218
+                        return pnp.DeviceID.split('\\')[-1]
+        except Exception as e:
+            print(f"Error fetching WMI serial: {e}")
+        return None
 
     def open_in_explorer(self):
         """Opens the camera device in Windows Explorer."""
@@ -217,6 +239,7 @@ class CameraHandler:
         return {
             "connected": self.is_connected,
             "model": self.device_name,
+            "serial": self.device_serial,
             "scan": {
                 "status": self.scan_state['status'],
                 "count": self.scan_state['count'],
@@ -508,11 +531,11 @@ class CameraHandler:
         is_frozen = getattr(sys, 'frozen', False)
         
         try:
-            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Classes\UsbAppAutoRun_v2.App\shell\open\command", 0, winreg.KEY_READ)
-            val, _ = winreg.QueryValueEx(key, "")
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_READ)
+            val, _ = winreg.QueryValueEx(key, autorun_setup.APP_RUN_KEY)
             winreg.CloseKey(key)
             
-            expected_cmd = autorun_setup.get_app_command()
+            expected_cmd = autorun_setup.get_detector_command()
             path_mismatch = (val != expected_cmd)
             
             return {"registered": True, "path_mismatch": path_mismatch, "is_frozen": is_frozen}

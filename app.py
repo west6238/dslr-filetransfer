@@ -12,6 +12,12 @@ if __name__ == '__main__':
         import autorun_setup
         autorun_setup.unregister_autoplay()
         sys.exit(0)
+    elif "--detector" in sys.argv:
+        import usb_detector
+        usb_detector.main()
+        sys.exit(0)
+    
+    # We will handle --ui below, but it shouldn't exit early because it needs to run Flask.
 
 import time
 import subprocess
@@ -34,6 +40,34 @@ app = Flask(__name__,
 
 # Start monitoring PTP/MPD devices in background
 camera_handler.start_monitoring()
+
+def is_detector_running():
+    try:
+        import win32com.client
+        wmi = win32com.client.GetObject("winmgmts:")
+        processes = wmi.InstancesOf("Win32_Process")
+        
+        current_pid = os.getpid()
+        is_frozen = getattr(sys, 'frozen', False)
+        
+        for p in processes:
+            if p.ProcessId == current_pid:
+                continue
+                
+            cmd = p.CommandLine
+            if not cmd:
+                continue
+                
+            if is_frozen:
+                if "app.exe" in cmd and "--detector" in cmd:
+                    return True
+            else:
+                cmd_lower = cmd.lower()
+                if "python" in cmd_lower and ("usb_detector.py" in cmd or ("app.py" in cmd and "--detector" in cmd)):
+                    return True
+    except Exception as e:
+        print(f"Error checking processes: {e}")
+    return False
 
 @app.route('/')
 def index():
@@ -117,6 +151,61 @@ def register_autorun():
 def unregister_autorun():
     success = camera_handler.run_autorun_setup("uninstall")
     return jsonify({"success": success})
+
+@app.route('/api/cameras/list', methods=['GET'])
+def list_cameras():
+    config = camera_handler.get_config()
+    return jsonify({
+        "registered_cameras": config.get("registered_cameras", []),
+        "autorun_only_registered": config.get("autorun_only_registered", True)
+    })
+
+@app.route('/api/cameras/register', methods=['POST'])
+def register_camera():
+    data = request.get_json(silent=True) or {}
+    serial = data.get('serial')
+    model = data.get('model')
+    name = data.get('name', f"{model} ({serial})")
+    
+    if not serial or not model:
+        return jsonify({"success": False, "error": "Missing serial or model"})
+        
+    config = camera_handler.get_config()
+    registered = config.get("registered_cameras", [])
+    
+    # Check if already registered
+    for cam in registered:
+        if cam.get('serial') == serial:
+            cam['name'] = name # Update name if already exists
+            camera_handler.update_config({"registered_cameras": registered})
+            return jsonify({"success": True})
+            
+    registered.append({
+        "model": model,
+        "serial": serial,
+        "name": name
+    })
+    camera_handler.update_config({"registered_cameras": registered})
+    return jsonify({"success": True})
+
+@app.route('/api/cameras/delete', methods=['POST'])
+def delete_camera():
+    data = request.get_json(silent=True) or {}
+    serial = data.get('serial')
+    
+    if not serial:
+        return jsonify({"success": False, "error": "Missing serial"})
+        
+    config = camera_handler.get_config()
+    registered = config.get("registered_cameras", [])
+    
+    new_registered = [cam for cam in registered if cam.get('serial') != serial]
+    
+    if len(new_registered) != len(registered):
+        camera_handler.update_config({"registered_cameras": new_registered})
+        return jsonify({"success": True})
+        
+    return jsonify({"success": False, "error": "Camera not found"})
 
 @app.route('/api/check-update', methods=['GET'])
 def check_update():
@@ -310,39 +399,25 @@ def launch_app_window():
 
 if __name__ == '__main__':
 
-    # 1. Nikon 기기 연결 검사 (AutoRun 시 타사 기기나 폰 연결 무시)
-    if "--autoplay" in sys.argv:
-        config = camera_handler.get_config()
-        if config.get("restrict_to_nikon", True):
-            is_nikon_connected = False
-            try:
-                import win32com.client
-                wmi = win32com.client.GetObject("winmgmts:")
-                
-                # USB 연결 직후 WMI에 반영되기까지 시간이 걸릴 수 있으므로 최대 5초 대기하며 재시도
-                for attempt in range(5):
-                    pnp_devices = wmi.InstancesOf("Win32_PnPEntity")
-                    for pnp in pnp_devices:
-                        if pnp.DeviceID and "VID_04B0" in pnp.DeviceID.upper():
-                            is_nikon_connected = True
-                            break
-                    
-                    if is_nikon_connected:
-                        break
-                        
-                    time.sleep(1.0)
-                    
-            except Exception as e:
-                print(f"[경고] WMI 기기 검사 실패: {e}")
-                # WMI 실패 시 기본 이름 기반 검사로 폴백 (약 1.5초 대기 후 장치 탐색)
-                time.sleep(1.5)
-                camera_handler.check_connection()
-                if camera_handler.device_name and "NIKON" in camera_handler.device_name.upper():
-                    is_nikon_connected = True
-
-            if not is_nikon_connected:
-                print("[알림] Nikon 카메라가 발견되지 않아 조용히 종료합니다.")
-                sys.exit(0)
+    if "--ui" in sys.argv:
+        # Detector spawned us, so we just run the UI natively
+        pass
+    else:
+        # User double-clicked app.exe or ran python app.py manually
+        if not is_detector_running():
+            print("[INFO] 첫 번째 실행: 백그라운드 에이전트(detector) 모드로 숨어 들어갑니다.")
+            if getattr(sys, 'frozen', False):
+                subprocess.Popen([sys.executable, "--detector"])
+            else:
+                subprocess.Popen([sys.executable, "app.py", "--detector"])
+            
+            # 개발 모드(터미널)일 때는 바로 UI를 띄워주는 것이 테스트에 유리하지만,
+            # 시나리오의 완벽한 일치를 위해 배포판과 동일하게 detector만 띄우고 종료합니다.
+            sys.exit(0)
+        else:
+            print("[INFO] 이미 detector가 동작 중입니다. UI 화면(브라우저)을 띄웁니다.")
+            # 이미 detector가 동작 중이므로 아래 Flask 런 루틴을 타서 UI가 열리게 됩니다.
+            pass
 
     def heartbeat_monitor():
         global last_ping_time
@@ -355,6 +430,6 @@ if __name__ == '__main__':
 
     threading.Thread(target=heartbeat_monitor, daemon=True).start()
 
-    print("DSLR 사진 가져오기 카메라 AutoRun 앱을 시작합니다 (http://127.0.0.1:5000)...")
+    print("DSLR 사진 가져오기 카메라 앱 UI를 시작합니다 (http://127.0.0.1:5000)...")
     threading.Thread(target=launch_app_window, daemon=True).start()
     app.run(host='127.0.0.1', port=5000, debug=False)

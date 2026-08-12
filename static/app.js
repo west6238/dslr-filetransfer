@@ -62,6 +62,9 @@ function initUI() {
     // Directory Picker
     document.getElementById('btn-select-dir').addEventListener('click', handleSelectDir);
 
+    // Camera Registration
+    document.getElementById('btn-register-camera').addEventListener('click', handleRegisterCurrentCamera);
+
     // Update
     const btnUpdate = document.getElementById('btn-do-update');
     if (btnUpdate) {
@@ -584,7 +587,92 @@ function openSettingsModal() {
             
             // Check AutoRun status when modal opens
             checkAutorunStatus();
+            
+            // Load and render registered cameras
+            loadRegisteredCameras();
         });
+}
+
+function loadRegisteredCameras() {
+    fetch('/api/cameras/list')
+        .then(res => res.json())
+        .then(data => {
+            const chkboxOnlyReg = document.getElementById('setting-autorun-only-registered');
+            chkboxOnlyReg.checked = data.autorun_only_registered !== false;
+            
+            const container = document.getElementById('camera-list-container');
+            container.innerHTML = '';
+            
+            if (data.registered_cameras && data.registered_cameras.length > 0) {
+                data.registered_cameras.forEach(cam => {
+                    const item = document.createElement('div');
+                    item.style.display = 'flex';
+                    item.style.justifyContent = 'space-between';
+                    item.style.alignItems = 'center';
+                    item.style.padding = '4px 0';
+                    item.style.borderBottom = '1px solid #ddd';
+                    
+                    item.innerHTML = `
+                        <div>
+                            <strong>${cam.name || cam.model}</strong><br>
+                            <small style="color: #666;">SN: ${cam.serial}</small>
+                        </div>
+                        <button class="btn secondary" style="padding: 2px 8px; font-size: 12px; color: #e74c3c; border-color: #e74c3c;" onclick="handleDeleteCamera('${cam.serial}')">삭제</button>
+                    `;
+                    container.appendChild(item);
+                });
+            } else {
+                container.innerHTML = '<div style="color: #999; font-size: 12px; text-align: center; padding: 10px;">등록된 기기가 없습니다.</div>';
+            }
+            
+            // Show current camera box if connected
+            const currentBox = document.getElementById('current-camera-box');
+            if (currentStatus && currentStatus.connected && currentStatus.serial) {
+                document.getElementById('current-camera-model').innerText = currentStatus.model || '알 수 없는 모델';
+                document.getElementById('current-camera-serial').innerText = `SN: ${currentStatus.serial}`;
+                currentBox.style.display = 'flex';
+                
+                // Hide register button if already registered
+                const isAlreadyRegistered = data.registered_cameras.some(c => c.serial === currentStatus.serial);
+                document.getElementById('btn-register-camera').style.display = isAlreadyRegistered ? 'none' : 'block';
+            } else {
+                currentBox.style.display = 'none';
+            }
+        });
+}
+
+function handleRegisterCurrentCamera() {
+    if (!currentStatus || !currentStatus.connected || !currentStatus.serial) return;
+    
+    fetch('/api/cameras/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            serial: currentStatus.serial,
+            model: currentStatus.model,
+            name: currentStatus.model
+        })
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            loadRegisteredCameras();
+        } else {
+            alert('기기 등록 실패: ' + data.error);
+        }
+    });
+}
+
+window.handleDeleteCamera = function(serial) {
+    if (!confirm('정말 이 기기를 자동 실행 목록에서 삭제하시겠습니까?')) return;
+    
+    fetch('/api/cameras/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serial: serial })
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            loadRegisteredCameras();
+        }
+    });
 }
 
 function checkAutorunStatus() {
@@ -668,7 +756,8 @@ function saveSettings() {
         chkbox_autorun: document.getElementById('setting-chkbox-autorun').checked,
         chkbox_explorer: document.getElementById('setting-chkbox-explorer').checked,
         save_dir: document.getElementById('setting-save-dir').value.trim(),
-        autorun_tag: document.getElementById('setting-autorun-tag').value.trim()
+        autorun_tag: document.getElementById('setting-autorun-tag').value.trim(),
+        autorun_only_registered: document.getElementById('setting-autorun-only-registered').checked
     };
 
     let changed = false;
@@ -677,7 +766,8 @@ function saveSettings() {
             originalConfig.chkbox_autorun !== payload.chkbox_autorun ||
             originalConfig.chkbox_explorer !== payload.chkbox_explorer ||
             (originalConfig.save_dir || '') !== payload.save_dir ||
-            (originalConfig.autorun_tag || '') !== payload.autorun_tag) {
+            (originalConfig.autorun_tag || '') !== payload.autorun_tag ||
+            (originalConfig.autorun_only_registered !== payload.autorun_only_registered)) {
             changed = true;
         }
     }
