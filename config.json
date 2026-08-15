@@ -1,6 +1,6 @@
 {
     "chkbox_tag": true,
-    "chkbox_autorun": false,
+    "chkbox_autorun": true,
     "chkbox_explorer": false,
     "save_dir": "C:/temp",
     "foldernaming": "가져온 날짜 + 태그",

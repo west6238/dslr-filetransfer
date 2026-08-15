@@ -1,61 +1,80 @@
-# 시스템 트레이(숨겨진 아이콘) 지원 기능 구현 플랜
-
-현재 `dslr-filetransfer` 앱은 카메라 감지를 위해 백그라운드에서 `usb_detector.py`를 실행하고 있습니다. 이 백그라운드 프로세스에 시스템 트레이 아이콘을 추가하여 사용자가 현재 앱이 백그라운드에서 감시 중인지 시각적으로 확인할 수 있고, 수동으로 UI를 열거나 앱을 완전 종료할 수 있도록 구현할 수 있습니다.
-
-## User Review Required
-
-> [!IMPORTANT]
-> 시스템 트레이 메뉴로 **UI 열기** 및 **앱 종료** 버튼을 제공할 계획입니다. 혹시 트레이 메뉴에 추가로 필요하신 항목이 있다면 알려주세요.
-> 기본 트레이 아이콘은 파이썬 코드로 간단한 이미지를 그려서(또는 기본 아이콘으로) 사용할 예정입니다. 별도로 사용하고자 하시는 `.ico` 또는 `.png` 파일이 있으시다면, 해당 경로를 알려주시면 적용해 드리겠습니다.
-
-## Proposed Changes
-
-### 앱 아키텍처 다이어그램 (변경 후)
-아래 다이어그램은 시스템 트레이 기능이 추가되었을 때의 전체적인 동작 구조를 보여줍니다.
-
-```mermaid
-flowchart TD
-    subgraph Background Process ["usb_detector.py (Background)"]
-        direction TB
-        M[Main Thread] -->|Runs| T[pystray System Tray Icon]
-        M -->|Starts| W[WMI Event Watcher Thread]
-        
-        W -.->|Detects USB Camera| LA(launch_app)
-        T -.->|User clicks 'UI 열기'| LA
-        T -.->|User clicks '종료'| Exit[Terminate Process]
-    end
-
-    subgraph UI Process ["app.py --ui (Foreground)"]
-        direction TB
-        F[Flask Web Server] -->|Serves| B[Web Browser / Edge App Mode]
-        HB[Heartbeat Monitor] -.->|Timeout| Shutdown[Terminate UI]
-        B -.->|Close window| Shutdown
-    end
-
-    LA ==>|Spawns new process| UI Process
+`dslr-filetransfer` 를 아래와 같이Windows 11 system tray app으로 변환하고자 한다.
+```
+시스템 트레이 아이콘을 추가하여 사용자가 현재 앱이 백그라운드에서 감시 중인지 시각적으로 확인할 수 있고, 수동으로 UI를 열거나 앱을 완전 종료할 수 있도록 구현할 수 있습니다.
 ```
 
----
+(현재 구현된) GUI 대비하여, PySide6 vs. PyQt6 vs. Webview vs. 기타 제안 GUI 등으로 수정 경우에 
+장단점을 비교해줘. (아직 구현 요청 아님)
+장단점 비교하고, 필요하면 app 전체 수정도 고려된다.
 
-### 의존성 패키지 변경
 
-#### [MODIFY] [requirements.txt](file:///C:/works/dslr-filetransfer/requirements.txt)
-트레이 아이콘 구현을 위해 `pystray`와 `pillow` 패키지를 추가합니다.
+--------------------
+`RULES.md` 파일에 아래 내용을 추가해줘
 
----
+- git commit branch 로 `development` 추가되었다.
+   앞으로 구현-검증은 git `development`가 default 이고, 별도 요청이 있는 경우에만 git `main` 으로 merge 된다.
 
-### 백그라운드 카메라 감지기 변경
+**PySide6로의 전면 전환**
 
-#### [MODIFY] [usb_detector.py](file:///C:/works/dslr-filetransfer/usb_detector.py)
-- 기존의 WMI 이벤트 루프(`watcher.NextEvent()`)는 블로킹(대기) 상태를 유지하므로, 이를 별도의 백그라운드 스레드로 분리합니다. 
-- 메인 스레드에서는 `pystray`를 이용해 시스템 트레이 아이콘을 띄우고 이벤트를 처리합니다.
-- 트레이 우클릭 메뉴 구현:
-  - **UI 열기**: 수동으로 `app.py --ui`를 호출하여 화면을 엽니다.
-  - **종료**: 감지 스레드 및 트레이 아이콘을 종료하고 프로세스를 완전히 닫습니다.
+--------------------
+- `RULES.md` 파일에 python interpreter 는 `C:\works\dslr-filetransfer\.venv\Scripts\python.exe` 이고, 테스트 검증은 명시된 interpreter 사용되도록 중요하게 추가-명시한다.
 
-## Verification Plan
+- system tray app 실행되는 process name?
+- 지금 camera USB 연결되어 있다. camera detect 되는지 체크하기
 
-### Manual Verification
-1. 앱을 실행하면 윈도우 우측 하단 시스템 트레이에 아이콘이 나타나는지 확인합니다.
-2. 아이콘을 우클릭하여 'UI 열기'와 '종료' 메뉴가 정상 동작하는지 테스트합니다.
-3. 트레이에 아이콘이 있는 상태에서 카메라(USB)를 연결했을 때 정상적으로 자동 실행(UI 팝업)이 유지되는지 확인합니다.
+--------------------
+동작 테스트 확인 내용과 지금 수정 필요한 부분은 아래와 같다
+1) .\.venv\Scripts\python.exe .\app\main.py -> (확인) 아이콘 뜸
+2) (사용자) camera USB 연결 -> (windows 탐색기 camera 인식) --> `main.py` UI 화면 띄우지 않음 --> ** 수정 하기 **
+3) camera USB 연결된 상태에서 'main.py` 아이콘 `Open UI` 클릭 --> `main.py` UI 화면 뜸
+4) `main.py` UI -> (앞으로) 하나씩 수정해 가기
+5) `main.py` UI -> `Register Current Device` 버튼 클릭 --> @terminal -- Traceback 확인하고 수정하기 --> ** 수정 하기 **
+6) camera USB 연결된 상태에서 --> (사용자) USB 연결 끊음 -->  `main.py` UI 화면이 그대로 유지됨... USB 연결이 끊어지면 UI 화면이 자동으로 없어지고 camera detect는 유지되어야 함. --> ** 수정 하기 **
+7) `6)` 에서 (사용자) `main.py` UI 창을 닫음 --> camera 미연결 상태에서 (사용자) `main.py` 아이콘 `Open UI` 클릭하여 UI 화면 뜸 --> UI 화면에 (기존 연결되어 있던 ) Camera Staus 'connected' 유지되고 있음  --> ** 수정 하기 **
+
+
+
+--------------------
+동작 테스트 확인 
+
+1) `.\.venv\Scripts\python.exe .\app\main.py` -> (확인) 아이콘 뜸
+2) `Settings` : `Tag Name` 
+	. (app 설치 default) 비어있고 dropdown data-list 항목 기본 제공 ( -> git commit `87bf915` 참조)
+	. (사용자) new value 기재 또는 `dropdown`에서 항목 선택 시, 이것을 기본값으로 변경
+		- (초기 default - 비어 있음을 제외하고) 기존 항목 값은 `dropdown data-list` 에 append 된다 (중복 제외)
+	. " `Tag Name` + text box " 아래 줄에 `YYYY-MM-DD_<tag>` 폴더에 저장` 설명 문구 추가
+3) `Settings` : `저장 폴더` 항목 추가
+	. widget 추가 : dropdown data-list + folder-selector
+	. 기본값 : (app 설치 default) Windows 기본 `사진` 폴더 + (`dropdown data-list` 항목 없음)
+	. (사용자) ` folder-selector` 이용하여 저장 폴더 변경하면
+		- (사용자 변경) 폴더 path가 `저장 폴더` 항목값으로 사용하고, `dropdown data-list` 항목에 append (중복 제외)
+	. 사용자는 `dropdown data-list` 에서 `저장 폴더`을 정할 수 있다.
+
+4)  `Settings` :
+	(공통)
+		- 등록된 기기는 동일한 설정을 이용한다.
+		- `Settings` <div> 에 포함된 `설정` 버튼 누르면 -> `Settings` 설정값 업데이트 되고 -> alert(' 설정값 업데이트되었습니다`) notice를 보여준다.
+                - (사용자) `Setting` 항목 변경하고 `설정` 버튼을 누르지 않으면 -> `Settings` 설정값 업데이트 되지 않는다.
+		- (사용자) `Setting` 항목 변경하고 `설정` 버튼을 누르지 않은 상태에서 `Settings` <div> 내부에 포함되지 않은 버튼을 클릭하면 alert(' 설정값 저장되지 않은 상태입니다.`) notice 제공
+		- notice 제공은 modal window 이어도 되고 `Settings` <div> 맨아래 notice 문구 보여주는 것일 수도 있다.
+
+	. [ USE-CASE ]
+		- Camera USB 미연결이고 `main.py` 아이콘 클릭 경우
+			. 기록된 설정값 기준으로  `main.py`UI display
+
+		- (미등록 기기 Camera USB 연결 경우) 또는 (미등록 camera USB 연결 경우)
+			.   `main.py` UI display 
+			. `Setting` : `Auto-fetch on connect` checkbox 는 설정값대로 보여주고, ** 자동 실행은 되지 않는다. **
+				-> 기기 등록되어 있지 않음 notice 를 보여준다.
+
+
+
+
+			
+
+
+
+
+
+
+
