@@ -29,6 +29,8 @@ def set_dark_mode(app):
     dark_palette.setColor(QPalette.HighlightedText, Qt.black)
     app.setPalette(dark_palette)
 
+APP_VERSION = "2.0.0"
+
 def main():
     app = QApplication(sys.argv)
     
@@ -37,6 +39,23 @@ def main():
     
     # Prevent application from closing when main window is hidden
     app.setQuitOnLastWindowClosed(False)
+
+    # Check for startup registration
+    from core.registry_manager import is_registered_in_startup, register_startup
+    
+    is_tray_mode = "--tray" in sys.argv
+    
+    if not is_registered_in_startup():
+        reply = QMessageBox.question(
+            None,
+            "시작프로그램 등록",
+            "윈도우 로그인 시 이 앱을 시스템 트레이에 자동으로 실행하도록 등록하시겠습니까?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+        if reply == QMessageBox.Yes:
+            register_startup()
+            is_tray_mode = True # Default to tray mode if just registered
 
     # Initialize Core Components
     camera_handler = CameraHandler()
@@ -48,6 +67,8 @@ def main():
     
     # Initialize UI
     main_window = MainWindow(camera_handler, usb_detector)
+    if not is_tray_mode:
+        main_window.showNormal()
 
     # Setup System Tray Icon
     icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'icon.svg')

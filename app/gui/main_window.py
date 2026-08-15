@@ -27,6 +27,19 @@ class MainWindow(QMainWindow):
         # Status Group
         status_group = QGroupBox("Camera Status")
         status_layout = QVBoxLayout(status_group)
+        
+        # Version and Update UI
+        version_layout = QHBoxLayout()
+        self.lbl_version = QLabel("v2.0.0")
+        self.lbl_version.setStyleSheet("color: gray;")
+        self.btn_update = QPushButton("업데이트 가능 (Update Available)")
+        self.btn_update.setStyleSheet("color: white; background-color: #27ae60; font-weight: bold; border-radius: 3px; padding: 2px 5px;")
+        self.btn_update.hide()
+        version_layout.addWidget(self.lbl_version)
+        version_layout.addWidget(self.btn_update)
+        version_layout.addStretch()
+        status_layout.addLayout(version_layout)
+
         self.lbl_status = QLabel("Disconnected")
         self.lbl_status.setStyleSheet("color: red; font-weight: bold;")
         self.lbl_device_info = QLabel("")
@@ -46,6 +59,24 @@ class MainWindow(QMainWindow):
         action_layout.addWidget(self.btn_delete)
         status_layout.addLayout(action_layout)
         layout.addWidget(status_group)
+
+        # Setup Updater
+        from core.updater import AppUpdater
+        from PySide6.QtCore import QTimer
+        
+        self.updater = AppUpdater("2.0.0")
+        self.updater.update_available.connect(self.on_update_available)
+        self.updater.download_progress.connect(self.on_progress)
+        self.updater.error_occurred.connect(lambda msg: QMessageBox.critical(self, "Update Error", msg))
+        
+        self.btn_update.clicked.connect(self.on_btn_update_clicked)
+
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self.updater.check_for_updates)
+        self.update_timer.start(4 * 60 * 60 * 1000) # 4 hours
+        
+        # Initial check
+        QTimer.singleShot(2000, self.updater.check_for_updates)
 
         # Settings Group
         settings_group = QGroupBox("Settings")
@@ -139,6 +170,21 @@ class MainWindow(QMainWindow):
         self.camera_handler.fetch_complete.connect(self.on_fetch_complete)
         self.camera_handler.delete_progress.connect(self.on_progress)
         self.camera_handler.delete_complete.connect(self.on_delete_complete)
+
+    @Slot(str, str)
+    def on_update_available(self, new_version, download_url):
+        self.btn_update.setText(f"업데이트 가능 (v{new_version})")
+        self.btn_update.show()
+        self.updater.new_version = new_version
+        self.updater.download_url = download_url
+
+    @Slot()
+    def on_btn_update_clicked(self):
+        reply = QMessageBox.question(self, "Update", "최신 버전으로 업데이트 하시겠습니까? 업데이트 중 앱이 재시작됩니다.", QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.lbl_progress.setText("Downloading update...")
+            self.progress_bar.setValue(0)
+            self.updater.start_update(self.updater.new_version, self.updater.download_url)
 
     @Slot()
     def mark_dirty(self):

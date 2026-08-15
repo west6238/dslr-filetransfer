@@ -38,19 +38,19 @@
 동작 테스트 확인 
 
 1) `.\.venv\Scripts\python.exe .\app\main.py` -> (확인) 아이콘 뜸
-2) `Settings` : `Tag Name` 
+2) `Settings` : `Tag Name`  -> ** 수정 하기 **
 	. (app 설치 default) 비어있고 dropdown data-list 항목 기본 제공 ( -> git commit `87bf915` 참조)
 	. (사용자) new value 기재 또는 `dropdown`에서 항목 선택 시, 이것을 기본값으로 변경
 		- (초기 default - 비어 있음을 제외하고) 기존 항목 값은 `dropdown data-list` 에 append 된다 (중복 제외)
 	. " `Tag Name` + text box " 아래 줄에 `YYYY-MM-DD_<tag>` 폴더에 저장` 설명 문구 추가
-3) `Settings` : `저장 폴더` 항목 추가
+3) `Settings` : `저장 폴더` 항목 추가  -> ** 수정 하기 **
 	. widget 추가 : dropdown data-list + folder-selector
 	. 기본값 : (app 설치 default) Windows 기본 `사진` 폴더 + (`dropdown data-list` 항목 없음)
 	. (사용자) ` folder-selector` 이용하여 저장 폴더 변경하면
 		- (사용자 변경) 폴더 path가 `저장 폴더` 항목값으로 사용하고, `dropdown data-list` 항목에 append (중복 제외)
 	. 사용자는 `dropdown data-list` 에서 `저장 폴더`을 정할 수 있다.
 
-4)  `Settings` :
+4)  `Settings` :  -> ** 수정 하기 **
 	(공통)
 		- 등록된 기기는 동일한 설정을 이용한다.
 		- `Settings` <div> 에 포함된 `설정` 버튼 누르면 -> `Settings` 설정값 업데이트 되고 -> alert(' 설정값 업데이트되었습니다`) notice를 보여준다.
@@ -67,9 +67,43 @@
 			. `Setting` : `Auto-fetch on connect` checkbox 는 설정값대로 보여주고, ** 자동 실행은 되지 않는다. **
 				-> 기기 등록되어 있지 않음 notice 를 보여준다.
 
+(code 수정하지 말고)
+ `main,py` 에서 app - update 기능 추가에 대해 설명해줘
+
+  (예를 들어) 	
+  app version 2.0.0 를 (첨부파일 DLSR_FileTranfer_v2.0.0.zip) `https://github.com/west6238/dslr-filetransfer/releases/tag/v1.0.0` 에 등록되고 배포된다.
+  그 이후
+  app version 2.1.4 로 배포하려고 한다.
+ 
+  `main.py` 에서 app version 주기적으로 체크하고 (예를 들어 4-hr 간격), 
+	상위 버전 확인되면, `main.py`	 app version 옆에 update 있음 notice 문구 보여주고
+	아이콘에 update 클릭하면 자동 update 하는 시나리오이다
+   이 시나리오 구현이 가능하나?
+
+  이 시나리오에서 (개발자는) 상위버전 2.1.4 배포판을 어디에 등록해야 하나?
+
+--------------------
+(code 수정하지 말고) 아래 시나리오 구현 가능 여부 의견 제시하기
+`main.py` app은 (pyinstaller --onedir)으로 배포하게 된다. 
+   배포된 app의 실행 파일 더블클릭하면
+	- `windows 로그인 -> system tray로 app 자동 실행` 등록되어 있지 않으면, `main.py`에서 자동으로 실행 등록할 것인지 물어본다.
+		Yes -> **app 자동 실행` 등록** -> `system tray로 app 자동 실행` 
+		No -> system tray 등록되지 않고 (초기 설정으로) `main.py` UI 화면 보여준다.
+	※ 초기설정에서 `Auto-fetch on connect` 체크박스는 unchecked 이다.
 
 
+ 
+--------------------
+1) app update 시나리오 추가  
+        - (진행하기) `주기적 버전 체크 (4시간 간격) + 버전 비교 및 알림 표시 + 자동 업데이트 로직 (Update 버튼 클릭 시)`
+	- (현재까지 작업 내용을) current version 2.0.0 으로 하고, 이후 수정내용은 2.x.y 로 한다.
+		. x: major 수정, y: minor 수정으로 gemini 가 정한다.
+		. 개발자는 첫번째 숫자만 관리한다.
+	- `Camera Status` 옆에 app 버전 보여준다
+        
+2) 자동 등록 시나리오 추가
 
+3) 여기까지 작업 내용을 정리하고 CHAGELOG.md에 업데이트 하고 git commit 실행한다.
 			
 
 
