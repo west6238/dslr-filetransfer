@@ -41,6 +41,7 @@ class CameraHandler(QObject):
     scan_progress = Signal(int, str) # count, current_file
     scan_complete = Signal(list) # list of files
     scan_failed = Signal(str)
+    auto_fetch_triggered = Signal()
     
     fetch_progress = Signal(int, int, str) # copied, total, current_file
     fetch_complete = Signal(int, str, bool) # copied_count, dest_path, is_deleted
@@ -197,8 +198,14 @@ class CameraHandler(QObject):
             self._auto_fetch_pending = True
 
         self._active_thread = WorkerThread(self._scan_worker)
+        self._active_thread.finished.connect(self._on_scan_thread_finished)
         self._active_thread.start()
         return True
+
+    def _on_scan_thread_finished(self):
+        if self._auto_fetch_pending:
+            self._auto_fetch_pending = False
+            self.auto_fetch_triggered.emit()
 
     def cancel_scan(self):
         self._scan_cancel_requested = True
@@ -238,23 +245,20 @@ class CameraHandler(QObject):
             if not self._scan_cancel_requested:
                 self.found_files = files_list
                 self.scan_complete.emit(files_list)
-                
-                if self._auto_fetch_pending:
-                    self._auto_fetch_pending = False
-                    # auto trigger fetch logic via signal connection in main_window
         except Exception as e:
             self.scan_failed.emit(str(e))
+            self._auto_fetch_pending = False
         finally:
             pythoncom.CoUninitialize()
 
-    def start_fetch(self, tag_name=''):
+    def start_fetch(self, tag_name='', save_dir=None, delete_after=None):
         if self._active_thread and self._active_thread.isRunning():
             return False
         
         if not self.found_files:
             return False
 
-        base_dir = self.config.get("save_dir")
+        base_dir = save_dir if save_dir is not None else self.config.get("save_dir")
         if not base_dir:
             base_dir = get_windows_pictures_folder()
         date_str = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -265,16 +269,16 @@ class CameraHandler(QObject):
         else:
             folder_name = date_str
 
-        self.config["last_tag"] = tag_name.strip() if tag_name else ""
-        self._save_config()
-
         self.dest_path = os.path.join(base_dir, folder_name)
+        
+        if delete_after is None:
+            delete_after = self.config.get("chkbox_delete_after", False)
 
-        self._active_thread = WorkerThread(self._fetch_worker, self.dest_path)
+        self._active_thread = WorkerThread(self._fetch_worker, self.dest_path, delete_after)
         self._active_thread.start()
         return True
 
-    def _fetch_worker(self, dest_path):
+    def _fetch_worker(self, dest_path, delete_after=False):
         pythoncom.CoInitialize()
         try:
             dest_path = os.path.abspath(os.path.normpath(dest_path))
@@ -373,31 +377,33 @@ class CameraHandler(QObject):
             except:
                 pass
                 
-            is_deleted = False
-            if self.config.get("chkbox_delete_after", False):
-                import sys
-                if getattr(sys, 'frozen', False):
-                    base_path = sys._MEIPASS
-                else:
-                    base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                
-                deleter_exe = os.path.join(base_path, 'app', 'assets', 'wpd_deleter.exe')
-                if os.path.exists(deleter_exe) and self.device_name:
-                    self.fetch_progress.emit(copied_count, total_count, '원본 파일 지우는 중...')
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    subprocess.run([deleter_exe, self.device_name], 
-                                capture_output=True, text=True,
-                                startupinfo=startupinfo,
-                                creationflags=subprocess.CREATE_NO_WINDOW)
-                    is_deleted = True
-
-            self.fetch_complete.emit(copied_count, dest_path, is_deleted)
-
         except Exception as e:
             self.fetch_failed.emit(str(e))
+            return
         finally:
             pythoncom.CoUninitialize()
+            
+        # Execute deletion after releasing COM resources
+        is_deleted = False
+        if delete_after:
+            import sys
+            if getattr(sys, 'frozen', False):
+                base_path = sys._MEIPASS
+            else:
+                base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+            deleter_exe = os.path.join(base_path, 'app', 'assets', 'WpdDeleter.exe')
+            if os.path.exists(deleter_exe) and self.device_name:
+                self.fetch_progress.emit(copied_count, total_count, '원본 파일 지우는 중...')
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                subprocess.run([deleter_exe, self.device_name], 
+                            capture_output=True, text=True,
+                            startupinfo=startupinfo,
+                            creationflags=subprocess.CREATE_NO_WINDOW)
+                is_deleted = True
+
+        self.fetch_complete.emit(copied_count, dest_path, is_deleted)
 
     def start_delete_originals(self):
         if self._active_thread and self._active_thread.isRunning():
@@ -419,10 +425,10 @@ class CameraHandler(QObject):
             else:
                 base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             
-            deleter_exe = os.path.join(base_path, 'app', 'assets', 'wpd_deleter.exe')
+            deleter_exe = os.path.join(base_path, 'app', 'assets', 'WpdDeleter.exe')
             
             if not os.path.exists(deleter_exe):
-                self.delete_failed.emit(f"삭제 모듈(wpd_deleter.exe)을 찾을 수 없습니다.")
+                self.delete_failed.emit(f"삭제 모듈(WpdDeleter.exe)을 찾을 수 없습니다.")
                 return
 
             total_count = len(self.found_files)

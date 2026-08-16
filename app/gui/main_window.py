@@ -92,6 +92,7 @@ class MainWindow(QMainWindow):
         tag_row.addWidget(QLabel("Tag Name:"))
         self.combo_tag = QComboBox()
         self.combo_tag.setEditable(True)
+        self.combo_tag.setMinimumHeight(28)
         tag_row.addWidget(self.combo_tag)
         tag_layout.addLayout(tag_row)
         
@@ -105,11 +106,13 @@ class MainWindow(QMainWindow):
         folder_layout.addWidget(QLabel("저장 폴더:"))
         self.combo_folder = QComboBox()
         self.combo_folder.setEditable(True)
+        self.combo_folder.setMinimumHeight(28)
         # expand combo box horizontally
         self.combo_folder.setSizePolicy(self.combo_tag.sizePolicy().horizontalPolicy(), self.combo_tag.sizePolicy().verticalPolicy())
         folder_layout.addWidget(self.combo_folder, 1)
         
         self.btn_browse_folder = QPushButton("...")
+        self.btn_browse_folder.setMinimumHeight(28)
         self.btn_browse_folder.setMaximumWidth(40)
         folder_layout.addWidget(self.btn_browse_folder)
         settings_layout.addLayout(folder_layout)
@@ -124,6 +127,7 @@ class MainWindow(QMainWindow):
 
         # Save Settings Button
         self.btn_save_settings = QPushButton("설정 (Save Settings)")
+        self.btn_save_settings.setMinimumHeight(28)
         settings_layout.addWidget(self.btn_save_settings)
 
         layout.addWidget(self.settings_container)
@@ -179,6 +183,9 @@ class MainWindow(QMainWindow):
         self.camera_handler.fetch_progress.connect(self.on_progress)
         self.camera_handler.fetch_complete.connect(self.on_fetch_complete)
         self.camera_handler.delete_progress.connect(self.on_progress)
+        self.camera_handler.auto_fetch_triggered.connect(self.on_btn_fetch)
+        
+        self.load_settings()
         
     @Slot(bool)
     def on_toggle_settings(self, checked):
@@ -295,26 +302,19 @@ class MainWindow(QMainWindow):
             folder = os.path.abspath(os.path.normpath(folder))
             self.combo_folder.setCurrentText(folder)
 
-    def check_dirty_state(self):
-        if self.is_dirty:
-            QMessageBox.warning(self, "Warning", "설정값이 저장되지 않은 상태입니다. 먼저 '설정' 버튼을 눌러주세요.")
-            return False
-        return True
-
     @Slot()
     def on_btn_scan(self):
-        if not self.check_dirty_state(): return
         self.camera_handler.start_scan()
 
     @Slot()
     def on_btn_fetch(self):
-        if not self.check_dirty_state(): return
-        # Since settings are saved, we fetch with current tag from config
-        self.camera_handler.start_fetch(self.camera_handler.config.get("last_tag", ""))
+        tag_name = self.combo_tag.currentText().strip()
+        save_dir = self.combo_folder.currentText().strip()
+        delete_after = self.chk_delete_after.isChecked()
+        self.camera_handler.start_fetch(tag_name, save_dir, delete_after)
 
     @Slot()
     def on_register_device(self):
-        if not self.check_dirty_state(): return
         
         if not self.camera_handler.is_connected:
             return
@@ -337,11 +337,12 @@ class MainWindow(QMainWindow):
         registered.append({"name": name, "serial": serial, "date_added": datetime.datetime.now().isoformat()})
         self.camera_handler.update_config({"registered_cameras": registered})
         self.refresh_device_list()
+        # Force UI update since it's now registered
+        self.on_connection_changed(True, name, serial)
         QMessageBox.information(self, "Success", "Device registered successfully.")
 
     @Slot()
     def on_remove_device(self):
-        if not self.check_dirty_state(): return
         
         current_item = self.list_devices.currentItem()
         if not current_item:
@@ -372,6 +373,29 @@ class MainWindow(QMainWindow):
             self.btn_scan.setEnabled(True)
             self.btn_register.setEnabled(True)
             self.lbl_progress.setText("Device connected.")
+            
+            config = self.camera_handler.config
+            registered = config.get("registered_cameras", [])
+            is_registered = any(cam.get("serial") == serial for cam in registered)
+            
+            if is_registered:
+                self.chk_autorun.setVisible(True)
+                self.chk_autorun.setEnabled(True)
+                self.chk_delete_after.setVisible(True)
+                self.chk_delete_after.setEnabled(True)
+                self.btn_save_settings.setVisible(True)
+                self.btn_save_settings.setEnabled(True)
+            else:
+                self.chk_autorun.setVisible(False)
+                self.chk_autorun.setEnabled(False)
+                self.chk_autorun.setChecked(False)
+                
+                self.chk_delete_after.setVisible(False)
+                self.chk_delete_after.setEnabled(False)
+                self.chk_delete_after.setChecked(False)
+                
+                self.btn_save_settings.setVisible(False)
+                self.btn_save_settings.setEnabled(False)
         else:
             self.lbl_status.setText("Disconnected")
             self.lbl_status.setStyleSheet("color: #e74c3c; font-weight: bold;")
