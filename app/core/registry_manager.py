@@ -31,3 +31,14 @@ def register_startup():
     except WindowsError as e:
         print("Failed to register startup:", e)
         return False
+
+def unregister_startup():
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REGISTRY_PATH, 0, winreg.KEY_SET_VALUE)
+        winreg.DeleteValue(key, APP_KEY_NAME)
+        winreg.CloseKey(key)
+        return True, "시작프로그램 자동 실행이 성공적으로 해제되었습니다."
+    except FileNotFoundError:
+        return True, "이미 레지스트리에 등록되어 있지 않습니다."
+    except WindowsError as e:
+        return False, f"삭제 중 오류가 발생했습니다: {e}"

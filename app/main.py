@@ -29,10 +29,20 @@ def set_dark_mode(app):
     dark_palette.setColor(QPalette.HighlightedText, Qt.black)
     app.setPalette(dark_palette)
 
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 
 def main():
     app = QApplication(sys.argv)
+    
+    # Check for unregister startup argument
+    if "--remove-startup" in sys.argv:
+        from core.registry_manager import unregister_startup
+        success, message = unregister_startup()
+        if success:
+            QMessageBox.information(None, "시작프로그램 해제", message)
+        else:
+            QMessageBox.critical(None, "오류", message)
+        sys.exit(0)
     
     # Enforce Dark Mode
     set_dark_mode(app)
