@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "mfKmv0bwaUE=",
+  "success": true,
+  "projectFilePath": "C:\\works\\dslr-filetransfer\\src\\wpd_deleter\\WpdDeleter.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\west\\.nuget\\packages\\mediadevices\\1.10.0\\mediadevices.1.10.0.nupkg.sha512",
+    "C:\\Users\\west\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.30\\microsoft.net.illink.tasks.8.0.30.nupkg.sha512",
+    "C:\\Users\\west\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.30\\microsoft.netcore.app.runtime.win-x64.8.0.30.nupkg.sha512",
+    "C:\\Users\\west\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.30\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.30.nupkg.sha512",
+    "C:\\Users\\west\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.30\\microsoft.aspnetcore.app.runtime.win-x64.8.0.30.nupkg.sha512"
+  ],
+  "logs": []
+}

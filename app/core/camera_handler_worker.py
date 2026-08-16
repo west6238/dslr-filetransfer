@@ -43,7 +43,7 @@ class CameraHandler(QObject):
     scan_failed = Signal(str)
     
     fetch_progress = Signal(int, int, str) # copied, total, current_file
-    fetch_complete = Signal()
+    fetch_complete = Signal(int, str, bool) # copied_count, dest_path, is_deleted
     fetch_failed = Signal(str)
 
     delete_progress = Signal(int, int, str) # deleted, total, current_file
@@ -279,8 +279,13 @@ class CameraHandler(QObject):
         try:
             dest_path = os.path.abspath(os.path.normpath(dest_path))
             os.makedirs(dest_path, exist_ok=True)
+            
+            temp_dir = os.path.join(dest_path, '.temp_fetch')
+            os.makedirs(temp_dir, exist_ok=True)
+            
             shell = win32com.client.Dispatch("Shell.Application")
             dest_shell_folder = shell.NameSpace(dest_path)
+            temp_shell_folder = shell.NameSpace(temp_dir)
 
             devices = self._get_portable_devices()
             if not devices:
@@ -290,6 +295,17 @@ class CameraHandler(QObject):
             device_item = devices[0][1]
             copied_count = 0
             total_count = len(self.found_files)
+            
+            import shutil
+            
+            def get_unique_filename(directory, filename):
+                base, ext = os.path.splitext(filename)
+                counter = 1
+                new_name = filename
+                while os.path.exists(os.path.join(directory, new_name)):
+                    new_name = f"{base} - ({counter}){ext}"
+                    counter += 1
+                return new_name
             
             def _traverse_and_copy(folder_obj):
                 nonlocal copied_count
@@ -303,40 +319,80 @@ class CameraHandler(QObject):
                             name = item.Name
                             ext = os.path.splitext(name)[1].lower()
                             if ext in DEFAULT_MEDIA_EXTENSIONS:
-                                target_file = os.path.join(dest_path, name)
-                                if os.path.exists(target_file):
-                                    os.remove(target_file)
-                                
-                                dest_shell_folder.CopyHere(item, 4 | 16 | 512 | 1024)
-                                
-                                start_wait = time.time()
-                                copy_success = False
-                                while time.time() - start_wait < 30.0:
-                                    pythoncom.PumpWaitingMessages()
-                                    time.sleep(0.1)
-                                    if os.path.exists(target_file) and os.path.getsize(target_file) > 0:
-                                        try:
-                                            with open(target_file, 'rb'): pass
-                                            copy_success = True
-                                            break
-                                        except IOError:
-                                            pass
-                                
-                                if copy_success:
-                                    copied_count += 1
+                                if os.path.exists(os.path.join(dest_path, name)):
+                                    target_temp_file = os.path.join(temp_dir, name)
+                                    if os.path.exists(target_temp_file):
+                                        os.remove(target_temp_file)
+                                    
+                                    temp_shell_folder.CopyHere(item, 4 | 16 | 512 | 1024)
+                                    
+                                    start_wait = time.time()
+                                    copy_success = False
+                                    while time.time() - start_wait < 30.0:
+                                        pythoncom.PumpWaitingMessages()
+                                        time.sleep(0.1)
+                                        if os.path.exists(target_temp_file) and os.path.getsize(target_temp_file) > 0:
+                                            try:
+                                                with open(target_temp_file, 'rb'): pass
+                                                copy_success = True
+                                                break
+                                            except IOError:
+                                                pass
+                                    
+                                    if copy_success:
+                                        unique_name = get_unique_filename(dest_path, name)
+                                        shutil.move(target_temp_file, os.path.join(dest_path, unique_name))
+                                        copied_count += 1
+                                else:
+                                    target_file = os.path.join(dest_path, name)
+                                    dest_shell_folder.CopyHere(item, 4 | 16 | 512 | 1024)
+                                    
+                                    start_wait = time.time()
+                                    copy_success = False
+                                    while time.time() - start_wait < 30.0:
+                                        pythoncom.PumpWaitingMessages()
+                                        time.sleep(0.1)
+                                        if os.path.exists(target_file) and os.path.getsize(target_file) > 0:
+                                            try:
+                                                with open(target_file, 'rb'): pass
+                                                copy_success = True
+                                                break
+                                            except IOError:
+                                                pass
+                                    
+                                    if copy_success:
+                                        copied_count += 1
                                 self.fetch_progress.emit(copied_count, total_count, name)
                 except Exception as e:
                     pass
 
             _traverse_and_copy(device_item.GetFolder)
 
-            self.fetch_complete.emit()
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except:
+                pass
+                
+            is_deleted = False
+            if self.config.get("chkbox_delete_after", False):
+                import sys
+                if getattr(sys, 'frozen', False):
+                    base_path = sys._MEIPASS
+                else:
+                    base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                
+                deleter_exe = os.path.join(base_path, 'app', 'assets', 'wpd_deleter.exe')
+                if os.path.exists(deleter_exe) and self.device_name:
+                    self.fetch_progress.emit(copied_count, total_count, '원본 파일 지우는 중...')
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    subprocess.run([deleter_exe, self.device_name], 
+                                capture_output=True, text=True,
+                                startupinfo=startupinfo,
+                                creationflags=subprocess.CREATE_NO_WINDOW)
+                    is_deleted = True
 
-            if self.config.get("chkbox_explorer", True):
-                try:
-                    os.startfile(dest_path)
-                except:
-                    pass
+            self.fetch_complete.emit(copied_count, dest_path, is_deleted)
 
         except Exception as e:
             self.fetch_failed.emit(str(e))
@@ -352,44 +408,38 @@ class CameraHandler(QObject):
         return True
 
     def _delete_worker(self):
-        pythoncom.CoInitialize()
         try:
-            devices = self._get_portable_devices()
-            if not devices:
+            if not self.device_name:
                 self.delete_failed.emit("장치 연결 끊김")
                 return
 
-            device_item = devices[0][1]
-            deleted_count = 0
+            import sys
+            if getattr(sys, 'frozen', False):
+                base_path = sys._MEIPASS
+            else:
+                base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+            deleter_exe = os.path.join(base_path, 'app', 'assets', 'wpd_deleter.exe')
+            
+            if not os.path.exists(deleter_exe):
+                self.delete_failed.emit(f"삭제 모듈(wpd_deleter.exe)을 찾을 수 없습니다.")
+                return
+
             total_count = len(self.found_files)
-
-            def _traverse_and_delete(folder_obj):
-                nonlocal deleted_count
-                if not folder_obj:
-                    return
-                try:
-                    items = folder_obj.Items()
-                    has_files = False
-                    for item in items:
-                        if item.IsFolder:
-                            _traverse_and_delete(item.GetFolder)
-                        else:
-                            has_files = True
-
-                    if has_files:
-                        self.delete_progress.emit(deleted_count, total_count, '폴더 파일 일괄 삭제 중...')
-                        try:
-                            items.InvokeVerbEx('delete')
-                            deleted_count += items.Count
-                            self.delete_progress.emit(deleted_count, total_count, '삭제 완료')
-                        except Exception as e_del:
-                            pass
-                except Exception as e:
-                    pass
-
-            _traverse_and_delete(device_item.GetFolder)
-            self.delete_complete.emit()
+            self.delete_progress.emit(0, total_count, '백그라운드에서 원본 삭제 중...')
+            
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            
+            result = subprocess.run([deleter_exe, self.device_name], 
+                                    capture_output=True, text=True,
+                                    startupinfo=startupinfo,
+                                    creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            if result.returncode == 0:
+                self.delete_progress.emit(total_count, total_count, '삭제 완료')
+                self.delete_complete.emit()
+            else:
+                self.delete_failed.emit(f"삭제 실패: {result.stderr or result.stdout}")
         except Exception as e:
             self.delete_failed.emit(str(e))
-        finally:
-            pythoncom.CoUninitialize()

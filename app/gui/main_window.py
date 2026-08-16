@@ -50,13 +50,10 @@ class MainWindow(QMainWindow):
         action_layout = QHBoxLayout()
         self.btn_scan = QPushButton("Scan Files")
         self.btn_fetch = QPushButton("Fetch Files")
-        self.btn_delete = QPushButton("Delete Originals")
         self.btn_scan.setEnabled(False)
         self.btn_fetch.setEnabled(False)
-        self.btn_delete.setEnabled(False)
         action_layout.addWidget(self.btn_scan)
         action_layout.addWidget(self.btn_fetch)
-        action_layout.addWidget(self.btn_delete)
         status_layout.addLayout(action_layout)
         layout.addWidget(status_group)
 
@@ -78,9 +75,16 @@ class MainWindow(QMainWindow):
         # Initial check
         QTimer.singleShot(2000, self.updater.check_for_updates)
 
-        # Settings Group
-        settings_group = QGroupBox("Settings")
-        settings_layout = QVBoxLayout(settings_group)
+        # Settings Accordion
+        self.btn_toggle_settings = QPushButton("Settings ▼")
+        self.btn_toggle_settings.setCheckable(True)
+        self.btn_toggle_settings.setChecked(False)
+        self.btn_toggle_settings.setStyleSheet("text-align: left; padding: 5px; font-weight: bold; background-color: #444;")
+        layout.addWidget(self.btn_toggle_settings)
+        
+        self.settings_container = QWidget()
+        self.settings_container.setVisible(False)
+        settings_layout = QVBoxLayout(self.settings_container)
         
         # Tag Name
         tag_layout = QVBoxLayout()
@@ -114,11 +118,15 @@ class MainWindow(QMainWindow):
         self.chk_autorun = QCheckBox("Auto-fetch on connect")
         settings_layout.addWidget(self.chk_autorun)
 
+        # Delete after fetch
+        self.chk_delete_after = QCheckBox("가져온 다음 항상 장치에서 지우기")
+        settings_layout.addWidget(self.chk_delete_after)
+
         # Save Settings Button
         self.btn_save_settings = QPushButton("설정 (Save Settings)")
         settings_layout.addWidget(self.btn_save_settings)
 
-        layout.addWidget(settings_group)
+        layout.addWidget(self.settings_container)
 
         # Progress Group
         progress_group = QGroupBox("Progress")
@@ -151,13 +159,15 @@ class MainWindow(QMainWindow):
         self.combo_folder.editTextChanged.connect(self.mark_dirty)
         self.combo_folder.currentIndexChanged.connect(self.mark_dirty)
         self.chk_autorun.stateChanged.connect(self.mark_dirty)
+        self.chk_delete_after.stateChanged.connect(self.mark_dirty)
+        
+        self.btn_toggle_settings.clicked.connect(self.on_toggle_settings)
         
         self.btn_browse_folder.clicked.connect(self.on_browse_folder)
         self.btn_save_settings.clicked.connect(self.save_settings)
 
         self.btn_scan.clicked.connect(self.on_btn_scan)
         self.btn_fetch.clicked.connect(self.on_btn_fetch)
-        self.btn_delete.clicked.connect(self.on_btn_delete)
         
         self.btn_register.clicked.connect(self.on_register_device)
         self.btn_remove_device.clicked.connect(self.on_remove_device)
@@ -169,7 +179,11 @@ class MainWindow(QMainWindow):
         self.camera_handler.fetch_progress.connect(self.on_progress)
         self.camera_handler.fetch_complete.connect(self.on_fetch_complete)
         self.camera_handler.delete_progress.connect(self.on_progress)
-        self.camera_handler.delete_complete.connect(self.on_delete_complete)
+        
+    @Slot(bool)
+    def on_toggle_settings(self, checked):
+        self.settings_container.setVisible(checked)
+        self.btn_toggle_settings.setText("Settings ▲" if checked else "Settings ▼")
 
     @Slot(str, str)
     def on_update_available(self, new_version, download_url):
@@ -199,10 +213,14 @@ class MainWindow(QMainWindow):
     def load_settings(self):
         config = self.camera_handler.config
         
-        # Load Autfetch
+        # Load Autfetch and Delete After
         self.chk_autorun.blockSignals(True)
         self.chk_autorun.setChecked(config.get("chkbox_autorun", False))
         self.chk_autorun.blockSignals(False)
+
+        self.chk_delete_after.blockSignals(True)
+        self.chk_delete_after.setChecked(config.get("chkbox_delete_after", False))
+        self.chk_delete_after.blockSignals(False)
 
         # Load Tag Name
         self.combo_tag.blockSignals(True)
@@ -259,6 +277,7 @@ class MainWindow(QMainWindow):
 
         # Autorun update
         config["chkbox_autorun"] = self.chk_autorun.isChecked()
+        config["chkbox_delete_after"] = self.chk_delete_after.isChecked()
 
         self.camera_handler.update_config(config)
         self.is_dirty = False
@@ -292,11 +311,6 @@ class MainWindow(QMainWindow):
         if not self.check_dirty_state(): return
         # Since settings are saved, we fetch with current tag from config
         self.camera_handler.start_fetch(self.camera_handler.config.get("last_tag", ""))
-
-    @Slot()
-    def on_btn_delete(self):
-        if not self.check_dirty_state(): return
-        self.camera_handler.start_delete_originals()
 
     @Slot()
     def on_register_device(self):
@@ -364,7 +378,6 @@ class MainWindow(QMainWindow):
             self.lbl_device_info.setText("")
             self.btn_scan.setEnabled(False)
             self.btn_fetch.setEnabled(False)
-            self.btn_delete.setEnabled(False)
             self.btn_register.setEnabled(False)
             self.lbl_progress.setText("Idle")
             self.progress_bar.setValue(0)
@@ -385,17 +398,23 @@ class MainWindow(QMainWindow):
         if total > 0:
             self.progress_bar.setValue(int((current / total) * 100))
 
-    @Slot()
-    def on_fetch_complete(self):
-        self.lbl_progress.setText("Fetch completed successfully.")
+    @Slot(int, str, bool)
+    def on_fetch_complete(self, copied_count, dest_path, is_deleted):
         self.progress_bar.setValue(100)
-        self.btn_delete.setEnabled(True)
-
-    @Slot()
-    def on_delete_complete(self):
-        self.lbl_progress.setText("Deletion completed.")
-        self.progress_bar.setValue(100)
-        self.btn_delete.setEnabled(False)
+        
+        if is_deleted:
+            msg = f"Camera 저장 파일 {copied_count}개의 파일을 PC {dest_path}에 저장 완료되고 Camera 저장 파일은 삭제되었습니다."
+        else:
+            msg = f"Camera 저장 파일 {copied_count}개의 파일을 PC {dest_path}에 저장 완료되고 Camera 저장 파일은 삭제되지 않음."
+            
+        QMessageBox.information(self, "가져오기 완료", msg)
+        
+        # 팝업 닫히면 폴더 띄우고 UI 숨기기
+        try:
+            os.startfile(dest_path)
+        except Exception:
+            pass
+        self.hide()
 
     def closeEvent(self, event):
         # Prevent window close from exiting application

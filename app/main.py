@@ -29,7 +29,7 @@ def set_dark_mode(app):
     dark_palette.setColor(QPalette.HighlightedText, Qt.black)
     app.setPalette(dark_palette)
 
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.0.0"
 
 def main():
     app = QApplication(sys.argv)

@@ -1,8 +1,8 @@
 {
     "chkbox_tag": true,
-    "chkbox_autorun": true,
+    "chkbox_autorun": false,
     "chkbox_explorer": false,
-    "save_dir": "C:/temp",
+    "save_dir": "C:\\Users\\west\\Pictures",
     "foldernaming": "가져온 날짜 + 태그",
     "taglist": [
         "test",
@@ -16,5 +16,8 @@
     "last_tag": "제주도여행",
     "autorun_tag": "",
     "registered_cameras": [],
-    "autorun_only_registered": true
+    "autorun_only_registered": true,
+    "save_folder_history": [
+        "C:\\Users\\west\\Pictures"
+    ]
 }

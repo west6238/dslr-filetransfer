@@ -1,0 +1,2 @@
+C:\works\dslr-filetransfer\app\assets\WpdDeleter.pdb
+C:\works\dslr-filetransfer\app\assets\WpdDeleter.exe

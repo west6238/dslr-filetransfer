@@ -106,9 +106,69 @@
 3) 여기까지 작업 내용을 정리하고 CHAGELOG.md에 업데이트 하고 git commit 실행한다.
 			
 
+--------------------
+
+`CHANGELOG.md` - 작업 이력 확인하고, `RULES.md` - 규칙을 숙지한다.
+
+--------------------
+`CHANGLOG.md` - 아래 작업 이력에서
+```
+ **시작프로그램(Startup) 레지스트리 동적 연동 로직 추가**: 배포판을 처음 더블클릭할 때, 윈도우 시작프로그램(Registry `Run` 키)에 미등록 상태라면 자동 실행 등록 여부를 사용자에게 묻는(`QMessageBox`) 스마트 설정 분기 기능.
+```
+배포판은 `pyinstaller --onedir` 이용해서 생성된 실행 파일을 의미하고
+`python.exe main.py` 로 app 실행 경우는 해당되지 않는다.
+현재 코드가 이렇게 구현된 것인지 확인한다.
+
+--------------------
+system tray 아이콘에서 `QUIT` 하면, 백그라운드에서 실행되고 있던 daemon 이 살아 있는 것처럼 보인다. 
+system tray 아이콘 `QUIT` 하면, app 그리고 daemon 모두 close & quit 되도록 구현되어 있는지 확인한다.
+
+--------------------
+App architecture diagram을 그려줘
+(전체적인 동작 구조)
+`C:\temp\화면 캡처 2026-08-16 130729.png`
+--------------------
+
+**비개발자** end user 용도로, app 배포판 사용 설명서를 작성해줘
+
+--------------------
+(개발자 테스트 목적으로)  `main.py` APP_VERSION = "1.0.0" 로 수정하고
+camera USB 미연결이고, `.\.venv\Scripts\python.exe .\app\main.py` 실행 -> app UI 에서 "v2.0.0" 으로 되어있다. 
+UI 에 display 되는 app version 체크되는 위치를 확인하기
+
+--------------------
+`CHANGELOG.md`를 참조해서 `APP_VERSION` 정하기 -> 배포 버전 만들기 --> zip 파일 압축 -> `CHANGELOG.md` 업데이트 -> git commit
+
+--------------------
+```
+- **시작프로그램(Startup) 레지스트리 동적 연동 로직 추가**: 배포판을 처음 더블클릭할 때, 윈도우 시작프로그램(Registry `Run` 키)에 미등록 상태라면 자동 실행 등록 여부를 사용자에게 묻는(`QMessageBox`) 스마트 설정 분기 기능.
+```
+에서 (사용자 - 배포판) 윈도우 시작프로그램 레지스트리 등록된 이후에, (사용자 의도적으로) 가 등록된 레지스트리 삭제하는 별도 (stand-alone) py-code 작성, 그리고(작성된 py-code 독립적인) 배포판 (pyinstalller --onefile) 작성에 대해 검토 의견을 제안해줘
 
 
+--------------------
+버튼 `Delete Originals` 누르면, 사용자 확인 없이 (USB 연결된) camera 에 저장된 파일 삭제가 가능한지 사전 검토해줘
 
+--------------------
+- 버튼 `Delete Originals` 삭제하고 `Settings` <div> checkbox 로 변경
+- `Settings` <div> 에 
+	. `가져온 다음 항상 장치에서 지우기` 체크박스 추가  -> default "unchecked"
+		. 체크박스 "checked" : `Fetch Files` 버튼 누르면, camera -> PC 로 복사하고 삭제까지 진행
+		. 체크박스 "unchecked" : `Fetch Files` 버튼 누르면, camera -> PC 로 복사하고 삭제는 미진행
 
+- `Fetch Files` 동일 파일 이름 복사 규칙
+	. PC 저장 폴더에 동일한 파일 이름 있는 경우에, 기존 파일 삭제하지 않고 복사되는 파일 suffix 추가한다.
+	. (예시) 파일 이름 동일한 경우 : `DSC_001.JPG` -> `DSC_001 - (1).JPG` -> `DSC_001 - (2) JPG`
+	
+- `Fetch Files` 실행완료되고 안내 문구 띄우기
+	. if `가져온 다음 항상 장치에서 지우기` 체크박스 checked 
+		-> "Camera 저장 파일 몇개 파일을 PC 어느 폴더에 저장 완료되고 Camera 저장 파일은 삭제되었다" 안내 문구 UI 로 전환된다.
+	  else: 
+                -> "Camera 저장 파일 몇개 파일을 PC 어느 폴더에 저장 완료되고 Camera 저장 파일은 삭제되지 않음" 안내 문구 UI 로 전환된다.
 
+	. 안내문구 UI - `확인` 버튼 누르면,  `main.py` UI 닫고 (app 종료 아님) --> camera 파일 저장된 폴더 위치로 windows 탐색기 띄운다
 
+- Settings display ... html accordion 처럼 
+	. `Settings` 클릭하면 Settings <div> display = None  - block toggle 되도록 수정한다
+        	-> UI 실행 띄울 때마다 display=none 이 기본값이다.
+	
