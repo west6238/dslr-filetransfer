@@ -9,7 +9,7 @@ import datetime
 from core.camera_handler_worker import get_windows_pictures_folder
 
 class MainWindow(QMainWindow):
-    def __init__(self, camera_handler, usb_detector):
+    def __init__(self, camera_handler, usb_detector, app_version="1.0.0"):
         super().__init__()
         self.camera_handler = camera_handler
         self.usb_detector = usb_detector
@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         
         # Version and Update UI
         version_layout = QHBoxLayout()
-        self.lbl_version = QLabel("v2.0.0")
+        self.lbl_version = QLabel(f"v{app_version}")
         self.lbl_version.setStyleSheet("color: gray;")
         self.btn_update = QPushButton("업데이트 가능 (Update Available)")
         self.btn_update.setStyleSheet("color: white; background-color: #27ae60; font-weight: bold; border-radius: 3px; padding: 2px 5px;")
@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
         from core.updater import AppUpdater
         from PySide6.QtCore import QTimer
         
-        self.updater = AppUpdater("2.0.0")
+        self.updater = AppUpdater(app_version)
         self.updater.update_available.connect(self.on_update_available)
         self.updater.download_progress.connect(self.on_progress)
         self.updater.error_occurred.connect(lambda msg: QMessageBox.critical(self, "Update Error", msg))

@@ -45,7 +45,8 @@ def main():
     
     is_tray_mode = "--tray" in sys.argv
     
-    if not is_registered_in_startup():
+    is_frozen = getattr(sys, 'frozen', False)
+    if is_frozen and not is_registered_in_startup():
         reply = QMessageBox.question(
             None,
             "시작프로그램 등록",
@@ -66,7 +67,7 @@ def main():
     usb_detector.camera_disconnected.connect(lambda dev_id: camera_handler.check_connection())
     
     # Initialize UI
-    main_window = MainWindow(camera_handler, usb_detector)
+    main_window = MainWindow(camera_handler, usb_detector, app_version=APP_VERSION)
     if not is_tray_mode:
         main_window.showNormal()
 
@@ -114,6 +115,7 @@ def main():
 
     # Start the background USB detector
     usb_detector.start()
+    app.aboutToQuit.connect(usb_detector.stop)
     
     # Check if a device is already connected on startup
     usb_detector.check_existing_devices()
