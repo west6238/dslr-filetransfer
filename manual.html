@@ -140,5 +140,21 @@
         </ul>
     </div>
 
+    <h2>7. Windows 윈도우 시작 시 자동 실행 (AutoRun) 설정 방법</h2>
+    <div class="step-box">
+        <p>기본적으로 앱은 윈도우 시작 시 자동으로 실행되지 않습니다. 만약 PC를 켤 때마다 앱을 자동으로 백그라운드에 띄우고 싶다면 다음 명령어를 사용하세요.</p>
+        <ul>
+            <li><strong>자동 실행 등록하기 (Add):</strong><br>
+                명령 프롬프트(CMD) 또는 PowerShell을 열고 앱이 있는 폴더로 이동한 뒤 아래 명령어를 입력합니다.
+                <div class="code-block">.\DSLR_FileTransfer.exe --add-startup</div>
+                성공적으로 등록되면 팝업 메시지가 나타납니다.
+            </li>
+            <li><strong>자동 실행 해제하기 (Remove):</strong><br>
+                더 이상 윈도우 시작 시 자동 실행하고 싶지 않다면 아래 명령어를 입력합니다.
+                <div class="code-block">.\DSLR_FileTransfer.exe --remove-startup</div>
+            </li>
+        </ul>
+    </div>
+
 </body>
 </html>

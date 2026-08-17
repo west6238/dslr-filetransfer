@@ -10,11 +10,35 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'PySide6.QtWebEngine',
+        'PySide6.QtWebEngineCore',
+        'PySide6.QtWebEngineWidgets',
+        'PySide6.QtQml',
+        'PySide6.QtQuick',
+        'PySide6.Qt3D',
+        'PySide6.QtBluetooth',
+        'PySide6.QtMultimedia',
+        'PySide6.QtSql',
+        'PySide6.QtTest',
+        'PySide6.QtNetwork',
+        'PySide6.QtSensors',
+        'PySide6.QtXml',
+        'matplotlib', 'numpy', 'pandas', 'PIL'
+    ],
     noarchive=False,
     optimize=0,
 )
 pyz = PYZ(a.pure)
+
+# Filter out unused PySide6 DLLs to reduce size significantly
+unwanted_dlls = [
+    'Qt6Qml.dll', 'Qt6QmlMeta.dll', 'Qt6QmlModels.dll', 'Qt6QmlWorkerScript.dll',
+    'Qt6Quick.dll', 'Qt6Network.dll', 'Qt6Pdf.dll', 'Qt6VirtualKeyboard.dll',
+    'opengl32sw.dll', 'qtvirtualkeyboardplugin.dll', 'qpdf.dll'
+]
+
+a.binaries = [b for b in a.binaries if not any(dll in b[0] for dll in unwanted_dlls)]
 
 exe = EXE(
     pyz,

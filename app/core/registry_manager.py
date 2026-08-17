@@ -27,10 +27,9 @@ def register_startup():
         value = f'{get_executable_path()} --tray'
         winreg.SetValueEx(key, APP_KEY_NAME, 0, winreg.REG_SZ, value)
         winreg.CloseKey(key)
-        return True
+        return True, "시작프로그램 자동 실행이 성공적으로 등록되었습니다."
     except WindowsError as e:
-        print("Failed to register startup:", e)
-        return False
+        return False, f"등록 중 오류가 발생했습니다: {e}"
 
 def unregister_startup():
     try:

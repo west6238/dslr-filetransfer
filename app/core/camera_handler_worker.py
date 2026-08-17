@@ -389,10 +389,11 @@ class CameraHandler(QObject):
             import sys
             if getattr(sys, 'frozen', False):
                 base_path = sys._MEIPASS
+                deleter_exe = os.path.join(base_path, 'assets', 'WpdDeleter.exe')
             else:
                 base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                deleter_exe = os.path.join(base_path, 'app', 'assets', 'WpdDeleter.exe')
             
-            deleter_exe = os.path.join(base_path, 'app', 'assets', 'WpdDeleter.exe')
             if os.path.exists(deleter_exe) and self.device_name:
                 self.fetch_progress.emit(copied_count, total_count, '원본 파일 지우는 중...')
                 startupinfo = subprocess.STARTUPINFO()
@@ -422,10 +423,10 @@ class CameraHandler(QObject):
             import sys
             if getattr(sys, 'frozen', False):
                 base_path = sys._MEIPASS
+                deleter_exe = os.path.join(base_path, 'assets', 'WpdDeleter.exe')
             else:
                 base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            
-            deleter_exe = os.path.join(base_path, 'app', 'assets', 'WpdDeleter.exe')
+                deleter_exe = os.path.join(base_path, 'app', 'assets', 'WpdDeleter.exe')
             
             if not os.path.exists(deleter_exe):
                 self.delete_failed.emit(f"삭제 모듈(WpdDeleter.exe)을 찾을 수 없습니다.")

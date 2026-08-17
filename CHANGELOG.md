@@ -6,7 +6,7 @@
 ### Added (추가됨)
 - **일반 사용자(End-user) 대상 매뉴얼 제공**: 설치부터 기기 등록, Auto-fetch 등 앱의 주요 기능을 그림 및 예시와 함께 안내하는 HTML 매뉴얼(`manual.html`) 추가.
 - **백그라운드 파일 삭제 모듈 추가 (.NET 8 기반)**: WPD(Windows Portable Devices) API를 직접 다루는 커스텀 C# CLI 도구(`wpd_deleter.exe`)를 개발하여, 기존 윈도우 OS의 다이얼로그(네이티브 팝업창) 강제 호출 없이 미디어 파일만 조용히 백그라운드에서 삭제할 수 있도록 지원.
-- **자동 실행 해제 옵션 제공**: 커맨드라인에서 `--remove-startup` 인수를 전달하여 실행 시, 앱을 구동하지 않고 시작프로그램(Registry) 등록만 안전하게 해제 후 즉시 종료하는 독립 기능 추가.
+- **자동 실행(AutoRun) 수동 제어 옵션 추가**: 커맨드라인에서 `--add-startup` 및 `--remove-startup` 인수를 전달하여 실행 시, 앱을 구동하지 않고 시작프로그램(Registry) 등록/해제만 안전하게 처리 후 즉시 종료하는 독립 기능 추가.
 
 ### Changed (변경됨)
 - **UI 구조 및 삭제 워크플로우 개편**: 메인화면의 'Delete Originals' 수동 삭제 버튼을 제거하고, 접이식(Accordion) 구조의 Settings 영역으로 통합.
@@ -20,6 +20,12 @@
 
 ### Fixed (수정됨)
 - **자동 파일 지우기 실패 버그 수정**: "Auto-fetch on connect" 흐름에서 삭제 모듈(`WpdDeleter.exe`) 실행 시, 카메라 COM 객체(Lock) 해제 시점과 맞물려 삭제가 진행되지 않고 실패하던 이슈(Locking 및 대소문자 불일치)를 수정.
+- **배포판(PyInstaller) WpdDeleter.exe 실행 실패 버그 수정**: `--onedir` 형태로 패키징된 배포 버전 실행 시, 내부 에셋 경로(`_MEIPASS`)가 다르게 해석되어 백그라운드 원본 지우기 도구를 찾지 못하던 문제를 수정.
+
+### Optimized (최적화)
+- **배포판 용량 최적화**: PyInstaller 빌드 시 PySide6 프레임워크의 앱 구동과 무관한 거대한 Qt 바이너리 파일(예: `opengl32sw.dll`, `Qt6Qml.dll`, `Qt6Pdf.dll` 등)을 `.spec` 파일에서 수동으로 필터링 및 제외하여 배포판 파일 크기를 크게 축소.
+
+> **[Notice]** 현재 코드는 `v2.1.0` 버전으로 고정(Fix)되었으며, 이후 진행되는 기능 개선이나 버그 수정 작업부터는 앱 버전(`APP_VERSION`)이 수정/상향될 예정입니다.
 
 ## [v2.0.0] - 2026-08-16
 ### Added (추가됨)

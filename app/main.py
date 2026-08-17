@@ -34,6 +34,15 @@ APP_VERSION = "2.1.0"
 def main():
     app = QApplication(sys.argv)
     
+    if "--add-startup" in sys.argv:
+        from core.registry_manager import register_startup
+        success, message = register_startup()
+        if success:
+            QMessageBox.information(None, "시작프로그램 등록", message)
+        else:
+            QMessageBox.critical(None, "오류", message)
+        sys.exit(0)
+
     # Check for unregister startup argument
     if "--remove-startup" in sys.argv:
         from core.registry_manager import unregister_startup
