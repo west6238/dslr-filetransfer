@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSLR FileTransfer 사용자 매뉴얼</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #34495e;
+        }
+        .step-box {
+            background-color: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .code-block {
+            background-color: #f1f2f6;
+            border-left: 4px solid #3498db;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 0.9em;
+            word-wrap: break-word;
+        }
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .important {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 10px;
+            margin: 10px 0;
+            color: #721c24;
+        }
+        ul, ol {
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📸 DSLR FileTransfer 사용 매뉴얼 (v2.1.0)</h1>
+    <p>DSLR FileTransfer 앱을 설치하고 사용하는 방법에 대한 안내서입니다.</p>
+
+    <h2>1. 설치 방법</h2>
+    <div class="step-box">
+        <p><strong>[Step 1]</strong> 좌측 아래 Windows 시작 로고 클릭 -> <strong>Windows PowerShell</strong> 검색 후 실행</p>
+        <p><strong>[Step 2]</strong> 아래 코드를 복사(Copy)해서 PowerShell 창에 붙여넣기(Paste)하고 Enter 키를 눌러 압축파일(zip)을 다운로드합니다.</p>
+        <div class="code-block">
+            Invoke-WebRequest -Uri "https://github.com/west6238/dslr-filetransfer/releases/download/v2.1.0/DSLR_FileTransfer.zip" -OutFile "DSLR_FileTransfer.zip"
+        </div>
+        <p><strong>[Step 3]</strong> 다운로드된 <code>DSLR_FileTransfer.zip</code> 파일을 바탕화면 등 원하는 폴더로 이동한 후, <strong>압축을 풉니다.</strong></p>
+        <p><strong>[Step 4]</strong> 압축을 푼 폴더로 들어가서 <code>DSLR_FileTransfer.exe</code> 파일을 더블클릭하여 실행합니다.</p>
+    </div>
+
+    <h2>2. 앱 실행 및 기본 동작</h2>
+    <div class="step-box">
+        <ul>
+            <li>앱(DSLR_FileTransfer.exe)을 처음 더블클릭하여 실행하면, 화면 우측 하단의 <strong>Windows 시스템 트레이(숨겨진 아이콘 창)</strong>에 카메라 모양의 앱 아이콘이 생성됩니다.</li>
+            <li><strong>백그라운드 모니터링:</strong> 앱 메인 화면(UI)이 닫혀 있더라도, 트레이 아이콘이 켜져 있다면 카메라는 상시 연결 감지 상태를 유지합니다.</li>
+            <li><strong>앱 종료:</strong> 앱을 완전히 종료하려면 시스템 트레이 아이콘을 <strong>우클릭</strong>한 뒤 <strong><code>QUIT</code></strong>를 선택해야 합니다. 메인 화면의 'X' 버튼을 눌러도 앱은 완전히 종료되지 않고 백그라운드로 전환됩니다.</li>
+        </ul>
+    </div>
+
+    <h2>3. 기기 등록 및 자동 기능 (Auto-fetch)</h2>
+    <div class="step-box">
+        <p>기기를 앱에 최초 1회 등록해야 자동 기능들을 사용할 수 있습니다.</p>
+        <ul>
+            <li><strong>기기 등록 방법:</strong> 앱 UI가 열린 상태에서 카메라 USB를 연결하면 기기가 감지됩니다. 처음 연결된 기기인 경우 화면의 안내에 따라 기기를 등록 목록(Whitelist)에 추가할 수 있습니다.</li>
+            <li><strong>등록된 기기의 이점:</strong> 기기가 정상적으로 등록된 상태여야만 USB 연결 시 사진을 자동으로 가져오는 <strong>'Auto-fetch'</strong> 기능이 지원됩니다. (미등록 기기는 Auto-fetch가 작동하지 않아 안전합니다.)</li>
+        </ul>
+    </div>
+
+    <h2>4. 설정(Settings) 변경 및 저장</h2>
+    <div class="step-box">
+        <p>등록된 기기를 대상으로 저장 폴더, 태그 이름 등을 설정할 수 있습니다.</p>
+        <div class="important">
+            <strong>⚠️ 매우 중요:</strong> 설정(Settings) 항목을 변경한 후에는 <strong>반드시 [설정 저장 (Save Settings)] 버튼을 클릭</strong>해야만 변경 사항이 반영됩니다. 저장하지 않은 상태로 기기를 조작할 경우 앱이 올바르게 동작하지 않을 수 있습니다.
+        </div>
+    </div>
+
+    <h2>5. 다양한 사용 시나리오 예시</h2>
+    <div class="step-box">
+        <h3>▶ 시나리오 A: 앱이 이미 실행 중일 때 카메라를 연결할 경우 (기본 흐름)</h3>
+        <ol>
+            <li>트레이 아이콘이 있는 상태에서 카메라 USB를 PC에 연결합니다.</li>
+            <li>자동으로 <strong>앱 UI 창이 나타나고</strong>, 카메라 연결이 감지(Detection)되었음을 보여줍니다.</li>
+        </ol>
+
+        <h3>▶ 시나리오 B: UI 창을 수동으로 열어두고 연결할 경우</h3>
+        <ol>
+            <li>시스템 트레이 아이콘을 <strong>우클릭</strong>하고 <strong><code>Open UI</code></strong>를 클릭하여 앱 화면을 미리 띄웁니다.</li>
+            <li>그 후 카메라 USB를 연결하면, 열려있던 앱 화면에 카메라 감지(Detection) 상태가 즉각 반영됩니다.</li>
+        </ol>
+
+        <h3>▶ 시나리오 C: 자동 기능 (체크박스 옵션 활성화 시)</h3>
+        <p class="note">※ 참고: 아래 옵션들은 <strong>'등록된 기기'</strong>에만 동작합니다.</p>
+        <ul>
+            <li><strong>Auto-fetch 체크 시:</strong><br>카메라 USB 연결 ➔ 앱 UI가 자동으로 팝업 ➔ 기기 감지 ➔ <strong>(별도 클릭 없이) 즉시 사진 파일 가져오기(file-fetch) 단계로 자동 진행</strong>됩니다.</li>
+            <li><strong>'가져온 다음 항상 장치에서 지우기' 체크 시:</strong><br>Auto-fetch를 통해 사진 가져오기가 성공적으로 완료된 후, <strong>자동으로 카메라 내부의 원본 파일 삭제 작업이 백그라운드에서 실행</strong>됩니다. 저장소 용량을 별도로 관리할 필요가 없어 매우 편리합니다.</li>
+        </ul>
+    </div>
+
+    <h2>6. 앱 업데이트 방법</h2>
+    <div class="step-box">
+        <ul>
+            <li>앱은 4시간마다 백그라운드에서 자동으로 최신 버전이 있는지 확인합니다.</li>
+            <li>새로운 버전이 감지되면 앱 화면(또는 알림)에 업데이트 안내 팝업이 나타납니다.</li>
+            <li>안내에 따라 <strong>[업데이트]</strong> 버튼만 클릭하면, <strong>최신 버전 자동 다운로드 ➔ 파일 덮어쓰기 ➔ 자동 재시작</strong>까지 한 번에 진행됩니다.</li>
+        </ul>
+    </div>
+
+</body>
+</html>
