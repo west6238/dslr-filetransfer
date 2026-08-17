@@ -48,11 +48,8 @@ class MainWindow(QMainWindow):
 
         # Actions Layout
         action_layout = QHBoxLayout()
-        self.btn_scan = QPushButton("Scan Files")
         self.btn_fetch = QPushButton("Fetch Files")
-        self.btn_scan.setEnabled(False)
         self.btn_fetch.setEnabled(False)
-        action_layout.addWidget(self.btn_scan)
         action_layout.addWidget(self.btn_fetch)
         status_layout.addLayout(action_layout)
         layout.addWidget(status_group)
@@ -75,15 +72,18 @@ class MainWindow(QMainWindow):
         # Initial check
         QTimer.singleShot(2000, self.updater.check_for_updates)
 
-        # Settings Accordion
-        self.btn_toggle_settings = QPushButton("Settings ▼")
-        self.btn_toggle_settings.setCheckable(True)
-        self.btn_toggle_settings.setChecked(False)
-        self.btn_toggle_settings.setStyleSheet("text-align: left; padding: 5px; font-weight: bold; background-color: #444;")
-        layout.addWidget(self.btn_toggle_settings)
-        
-        self.settings_container = QWidget()
-        self.settings_container.setVisible(False)
+        # Progress Group
+        progress_group = QGroupBox("Progress")
+        progress_layout = QVBoxLayout(progress_group)
+        self.lbl_progress = QLabel("Idle")
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        progress_layout.addWidget(self.lbl_progress)
+        progress_layout.addWidget(self.progress_bar)
+        layout.addWidget(progress_group)
+
+        # Settings Group
+        self.settings_container = QGroupBox("Settings")
         settings_layout = QVBoxLayout(self.settings_container)
         
         # Tag Name
@@ -132,16 +132,6 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self.settings_container)
 
-        # Progress Group
-        progress_group = QGroupBox("Progress")
-        progress_layout = QVBoxLayout(progress_group)
-        self.lbl_progress = QLabel("Idle")
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setValue(0)
-        progress_layout.addWidget(self.lbl_progress)
-        progress_layout.addWidget(self.progress_bar)
-        layout.addWidget(progress_group)
-
         # Devices Group
         devices_group = QGroupBox("Registered Devices")
         devices_layout = QVBoxLayout(devices_group)
@@ -165,12 +155,9 @@ class MainWindow(QMainWindow):
         self.chk_autorun.stateChanged.connect(self.mark_dirty)
         self.chk_delete_after.stateChanged.connect(self.mark_dirty)
         
-        self.btn_toggle_settings.clicked.connect(self.on_toggle_settings)
-        
         self.btn_browse_folder.clicked.connect(self.on_browse_folder)
         self.btn_save_settings.clicked.connect(self.save_settings)
 
-        self.btn_scan.clicked.connect(self.on_btn_scan)
         self.btn_fetch.clicked.connect(self.on_btn_fetch)
         
         self.btn_register.clicked.connect(self.on_register_device)
@@ -187,11 +174,6 @@ class MainWindow(QMainWindow):
         
         self.load_settings()
         
-    @Slot(bool)
-    def on_toggle_settings(self, checked):
-        self.settings_container.setVisible(checked)
-        self.btn_toggle_settings.setText("Settings ▲" if checked else "Settings ▼")
-
     @Slot(str, str)
     def on_update_available(self, new_version, download_url):
         self.btn_update.setText(f"업데이트 가능 (v{new_version})")
@@ -303,10 +285,6 @@ class MainWindow(QMainWindow):
             self.combo_folder.setCurrentText(folder)
 
     @Slot()
-    def on_btn_scan(self):
-        self.camera_handler.start_scan()
-
-    @Slot()
     def on_btn_fetch(self):
         tag_name = self.combo_tag.currentText().strip()
         save_dir = self.combo_folder.currentText().strip()
@@ -370,9 +348,9 @@ class MainWindow(QMainWindow):
             self.lbl_status.setText("Connected")
             self.lbl_status.setStyleSheet("color: #2ecc71; font-weight: bold;")
             self.lbl_device_info.setText(f"{name} ({serial})")
-            self.btn_scan.setEnabled(True)
             self.btn_register.setEnabled(True)
             self.lbl_progress.setText("Device connected.")
+            self.camera_handler.start_scan()
             
             config = self.camera_handler.config
             registered = config.get("registered_cameras", [])
@@ -400,7 +378,6 @@ class MainWindow(QMainWindow):
             self.lbl_status.setText("Disconnected")
             self.lbl_status.setStyleSheet("color: #e74c3c; font-weight: bold;")
             self.lbl_device_info.setText("")
-            self.btn_scan.setEnabled(False)
             self.btn_fetch.setEnabled(False)
             self.btn_register.setEnabled(False)
             self.lbl_progress.setText("Idle")
