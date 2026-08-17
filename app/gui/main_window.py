@@ -170,6 +170,8 @@ class MainWindow(QMainWindow):
         self.camera_handler.fetch_progress.connect(self.on_progress)
         self.camera_handler.fetch_complete.connect(self.on_fetch_complete)
         self.camera_handler.delete_progress.connect(self.on_progress)
+        self.camera_handler.scan_failed.connect(self.on_scan_failed)
+        self.camera_handler.fetch_failed.connect(self.on_fetch_failed)
         self.camera_handler.auto_fetch_triggered.connect(self.on_btn_fetch)
         
         self.load_settings()
@@ -202,13 +204,17 @@ class MainWindow(QMainWindow):
     def load_settings(self):
         config = self.camera_handler.config
         
+        serial = self.camera_handler.device_serial
+        registered = config.get("registered_cameras", [])
+        is_registered = any(cam.get("serial") == serial for cam in registered) if serial else False
+        
         # Load Autfetch and Delete After
         self.chk_autorun.blockSignals(True)
-        self.chk_autorun.setChecked(config.get("chkbox_autorun", False))
+        self.chk_autorun.setChecked(is_registered and config.get("chkbox_autorun", False))
         self.chk_autorun.blockSignals(False)
 
         self.chk_delete_after.blockSignals(True)
-        self.chk_delete_after.setChecked(config.get("chkbox_delete_after", False))
+        self.chk_delete_after.setChecked(is_registered and config.get("chkbox_delete_after", False))
         self.chk_delete_after.blockSignals(False)
 
         # Load Tag Name
@@ -416,6 +422,21 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         self.hide()
+
+    @Slot(str)
+    def on_scan_failed(self, error_msg):
+        self.lbl_status.setText(f"스캔 실패: {error_msg}")
+        self.btn_scan.setEnabled(True)
+        self.progress_bar.setValue(0)
+        QMessageBox.warning(self, "스캔 오류", f"기기 스캔에 실패했습니다.\n오류: {error_msg}")
+
+    @Slot(str)
+    def on_fetch_failed(self, error_msg):
+        self.lbl_status.setText(f"가져오기 실패: {error_msg}")
+        self.btn_scan.setEnabled(True)
+        self.btn_fetch.setEnabled(len(self.camera_handler.found_files) > 0)
+        self.progress_bar.setValue(0)
+        QMessageBox.warning(self, "가져오기 오류", f"파일 가져오기에 실패했습니다.\n오류: {error_msg}")
 
     def closeEvent(self, event):
         # Prevent window close from exiting application

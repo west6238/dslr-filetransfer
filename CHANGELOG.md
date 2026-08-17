@@ -21,9 +21,14 @@
 ### Fixed (수정됨)
 - **자동 파일 지우기 실패 버그 수정**: "Auto-fetch on connect" 흐름에서 삭제 모듈(`WpdDeleter.exe`) 실행 시, 카메라 COM 객체(Lock) 해제 시점과 맞물려 삭제가 진행되지 않고 실패하던 이슈(Locking 및 대소문자 불일치)를 수정.
 - **배포판(PyInstaller) WpdDeleter.exe 실행 실패 버그 수정**: `--onedir` 형태로 패키징된 배포 버전 실행 시, 내부 에셋 경로(`_MEIPASS`)가 다르게 해석되어 백그라운드 원본 지우기 도구를 찾지 못하던 문제를 수정.
+- **MTP 및 Mass Storage 스캔 안정성 개선**: 백그라운드 스레드에서 장치 스캔 시 첫 번째 항목을 무조건 선택하여 발생하는 기기 인식 오류(예: OneDrive 스캔 등)를 해결하기 위해 `device_name`을 정확히 매칭하도록 로직 변경. MTP 기기 중 일부 접근 불가 폴더에서 예외가 발생하더라도 전체 탐색이 중단되지 않도록 `try-except` 위치 최적화.
+- **백그라운드 오류 UI 피드백 연동**: `scan_failed`, `fetch_failed` 시그널을 메인 UI 핸들러에 연결하여 에러 발생 시 무한 "스캔 중..." 텍스트에 머무는 문제 수정.
 
 ### Optimized (최적화)
 - **배포판 용량 최적화**: PyInstaller 빌드 시 PySide6 프레임워크의 앱 구동과 무관한 거대한 Qt 바이너리 파일(예: `opengl32sw.dll`, `Qt6Qml.dll`, `Qt6Pdf.dll` 등)을 `.spec` 파일에서 수동으로 필터링 및 제외하여 배포판 파일 크기를 크게 축소.
+
+### Pending Issues (알려진 문제 / 보류)
+- **MTP 장치 스캔 및 파일 가져오기 이슈**: MTP와 Mass Storage가 복합적으로 구성된 환경이거나, MTP로 연결된 특정 카메라 환경에서 `Auto-fetch`, `file-scan`, `file-fetch` 가 정상 작동하지 않는 이슈 확인. (상세 원인 및 해결 방안은 추후 분석)
 
 > **[Notice]** 현재 코드는 `v2.1.0` 버전으로 고정(Fix)되었으며, 이후 진행되는 기능 개선이나 버그 수정 작업부터는 앱 버전(`APP_VERSION`)이 수정/상향될 예정입니다.
 
